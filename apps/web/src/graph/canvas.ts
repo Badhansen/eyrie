@@ -3,7 +3,7 @@ import { select, type Selection } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom';
 import type { Mark } from '../state/store';
-import { drawIn, ripple, sendParticle, startFlow } from './effects';
+import { drawIn, ripple, sendParticle, startFlow, traceSelection } from './effects';
 import type { GraphRenderer, Highlight, RendererCallbacks } from './renderer';
 import { NODE_H, NODE_W, resample, roundedPath, type Layout, type PlacedEdge, type PlacedNode, type Point } from './layout';
 import { KIND_LABEL, LANE_LABEL, ROLE_LABEL, catClass, dataRoleOf, edgeVerbs, isBroken, linkClass } from './vocabulary';
@@ -11,7 +11,7 @@ import { KIND_LABEL, LANE_LABEL, ROLE_LABEL, catClass, dataRoleOf, edgeVerbs, is
 export type { Highlight } from './renderer';
 
 const MOVE_MS = 560;
-const MIN_FIT_SCALE = 0.62;
+const MIN_FIT_SCALE = 0.85;
 const GLYPH: Record<Mark, string> = { new: '+', modified: '~', removed: '−' };
 
 const measure = document.createElement('canvas').getContext('2d')!;
@@ -67,6 +67,7 @@ export class GraphCanvas implements GraphRenderer {
   private hl: Highlight = { selected: null, focus: null, flow: false, matches: null, frame: null };
   private hover: string | null = null;
   private stopFlow: () => void = () => {};
+  private stopSelection: () => void = () => {};
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor(
@@ -117,6 +118,7 @@ export class GraphCanvas implements GraphRenderer {
 
   destroy(): void {
     this.stopFlow();
+    this.stopSelection();
     this.svg.selectAll('*').remove();
   }
 
@@ -407,8 +409,19 @@ export class GraphCanvas implements GraphRenderer {
   }
 
   setHighlight(hl: Highlight): void {
+    const changed = this.hl.selected !== hl.selected;
     this.hl = hl;
     this.applyHighlight();
+    if (changed) {
+      this.stopSelection();
+      const paths: SVGPathElement[] = [];
+      if (hl.selected && !hl.flow) {
+        this.edgesG.selectAll<SVGGElement, PlacedEdge>('g.edge').each((d, i, groups) => {
+          if (hl.focus?.edges.has(d.edge.id)) paths.push(groups[i]!.querySelector<SVGPathElement>('path.line')!);
+        });
+      }
+      this.stopSelection = traceSelection(this.particlesG.node()!, paths);
+    }
   }
 
   private applyHighlight(): void {
@@ -524,4 +537,3 @@ export class GraphCanvas implements GraphRenderer {
     return this.labels.get(id);
   }
 }
-

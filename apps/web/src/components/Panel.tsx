@@ -43,7 +43,7 @@ export function Panel() {
   return (
     <aside
       aria-label={`${node.label} details`}
-      className="scroll-thin fixed inset-x-0 bottom-0 z-20 max-h-[68vh] overflow-y-auto rounded-t-xl border-t border-rule bg-ink-1 md:static md:z-auto md:max-h-none md:w-[384px] md:shrink-0 md:rounded-none md:border-t-0 md:border-l"
+      className="detail-panel scroll-thin fixed inset-x-0 bottom-0 z-20 max-h-[68vh] overflow-y-auto rounded-t-xl border-t border-rule bg-ink-1 md:static md:z-auto md:max-h-none md:w-[384px] md:shrink-0 md:rounded-none md:border-t-0 md:border-l"
     >
       <Details key={node.id} node={node} />
     </aside>
@@ -87,7 +87,7 @@ function Details({ node }: { node: ArchNode }) {
   const broken = isBroken(node);
 
   return (
-    <div className={`${catClass(node)} flex flex-col`}>
+    <div className={`${catClass(node)} detail-content flex flex-col`}>
       <div className="sticky top-0 z-10 border-b border-rule bg-ink-1/95 px-5 pt-4 pb-4 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-mono text-[10.5px] tracking-[0.12em] uppercase" style={{ color: 'var(--c)' }}>

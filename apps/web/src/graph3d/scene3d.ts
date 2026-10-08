@@ -5,7 +5,7 @@
  */
 import { animate as tween, spring, stagger, utils } from 'animejs';
 import { ARCH_LANES, type ArchNode } from '@eyrie/core';
-import { drawIn, reducedMotion, ripple, sendParticle, startFlow } from '../graph/effects';
+import { drawIn, reducedMotion, ripple, sendParticle, startFlow, traceSelection } from '../graph/effects';
 import { NODE_H, NODE_W, resample, roundedPath, type Layout, type PlacedNode, type Point } from '../graph/layout';
 import type { GraphRenderer, Highlight, RendererCallbacks } from '../graph/renderer';
 import { KIND_LABEL, LANE_LABEL, catClass, edgeVerbs, isBroken } from '../graph/vocabulary';
@@ -70,6 +70,7 @@ export class GraphScene3D implements GraphRenderer {
   private hover: string | null = null;
   private lifted: string | null = null;
   private stopFlow: () => void = () => {};
+  private stopSelection: () => void = () => {};
   private drag: { mode: 'pan' | 'orbit'; x: number; y: number; moved: boolean } | null = null;
   private pointers = new Map<number, { x: number; y: number }>();
   private pinch: { dist: number; zoom: number } | null = null;
@@ -147,6 +148,7 @@ export class GraphScene3D implements GraphRenderer {
 
   destroy(): void {
     this.stopFlow();
+    this.stopSelection();
     utils.remove(this.cam);
     utils.remove([...this.blocks.values()]);
     window.removeEventListener('keydown', this.onKey);
@@ -446,8 +448,16 @@ export class GraphScene3D implements GraphRenderer {
   }
 
   setHighlight(hl: Highlight): void {
+    const changed = this.hl.selected !== hl.selected;
     this.hl = hl;
     this.applyHighlight();
+    if (changed) {
+      this.stopSelection();
+      const paths = hl.selected && !hl.flow
+        ? [...(hl.focus?.edges ?? [])].map((id) => this.edges.get(id)?.querySelector<SVGPathElement>('path.line')).filter((p): p is SVGPathElement => !!p)
+        : [];
+      this.stopSelection = traceSelection(this.particlesG, paths);
+    }
   }
 
   private applyHighlight(): void {

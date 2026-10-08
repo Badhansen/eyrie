@@ -19,7 +19,7 @@
   --color-rule-strong: #343b41;
   --color-text: #e7e9e4;
   --color-dim: #9aa3a7;
-  --color-faint: #646d72;
+  --color-faint: #899398;
 
   --color-frontend: #7aa7ff;
   --color-api: #58d68d;
@@ -45,7 +45,7 @@
     --color-rule-strong: #c9cdc7;
     --color-text: #15191c;
     --color-dim: #525b60;
-    --color-faint: #8a9296;
+    --color-faint: #626b70;
     --color-frontend: #2f6fdf;
     --color-api: #1f9d5a;
     --color-service: #c96a14;
@@ -74,6 +74,58 @@ body {
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+input {
+  caret-color: var(--color-frontend);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.eyrie-topbar {
+  position: relative;
+  z-index: 10;
+}
+.lens-option,
+.category-filter,
+.search-field {
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.lens-option[aria-checked='true'] {
+  box-shadow: inset 0 0 0 1px var(--color-rule-strong);
+}
+.category-filter:active,
+.lens-option:active {
+  background: var(--color-ink-3);
+}
+.search-field:focus-visible {
+  outline: 2px solid var(--color-frontend);
+  outline-offset: 2px;
+}
+.detail-panel {
+  animation: panel-in 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.detail-content {
+  animation: detail-in 180ms ease-out;
+}
+@keyframes panel-in {
+  from { transform: translateY(12px); opacity: 0.7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes detail-in {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+@media (min-width: 768px) {
+  @keyframes panel-in {
+    from { transform: translateX(12px); opacity: 0.7; }
+    to { transform: translateX(0); opacity: 1; }
+  }
 }
 
 :focus-visible {
@@ -122,7 +174,7 @@ body {
 .lane-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   text-transform: uppercase;
   fill: var(--color-faint);
 }
@@ -215,7 +267,7 @@ body {
 .node .kind {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
   fill: color-mix(in oklab, var(--c) 80%, var(--color-text));
 }
@@ -250,7 +302,7 @@ body {
   stroke-width: 1.5;
 }
 .node.dim {
-  opacity: 0.2;
+  opacity: 0.3;
 }
 .node.faded {
   opacity: 0.55;
@@ -302,6 +354,10 @@ body {
 .particle {
   fill: var(--color-text);
   pointer-events: none;
+}
+.selection-particle {
+  stroke: var(--color-ink-0);
+  stroke-width: 1.4;
 }
 .ripple {
   pointer-events: none;
@@ -420,7 +476,7 @@ body {
 .lane3d-label {
   font-family: var(--font-mono);
   font-size: 20px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0;
   text-transform: uppercase;
   fill: color-mix(in oklab, var(--color-text) 26%, transparent);
 }
@@ -567,7 +623,7 @@ body {
 .block3d .b-kind {
   font-family: var(--font-mono);
   font-size: 8.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--c) 80%, var(--color-text));
   line-height: 12px;
@@ -625,7 +681,7 @@ body {
 }
 .block3d.dim .b-face,
 .block3d.dim .b-shadow {
-  opacity: 0.16;
+  opacity: 0.26;
 }
 .block3d.faded .b-face,
 .block3d.faded .b-shadow {

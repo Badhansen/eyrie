@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T23:30:26Z",
+  "title": "Design System: Eyrie",
+  "extensions": {
+    "colorMeta": {
+      "ink-0": { "role": "neutral", "displayName": "Graphite Zero", "canonical": "#0d1012", "lightMode": "#f4f5f2", "tonalRamp": ["#191b1d", "#242729", "#34383a", "#484d50", "#61676a", "#7f8588", "#a1a6a8", "#c5c9ca"] },
+      "ink-1": { "role": "neutral", "displayName": "Graphite One", "canonical": "#13171a", "lightMode": "#fbfbf9", "tonalRamp": ["#1b1e21", "#272a2d", "#373a3d", "#4b4e50", "#64676a", "#828587", "#a3a6a7", "#c7c9ca"] },
+      "ink-2": { "role": "neutral", "displayName": "Graphite Two", "canonical": "#191e22", "lightMode": "#ffffff", "tonalRamp": ["#202427", "#2c3033", "#3b3f42", "#505356", "#686b6d", "#86888a", "#a6a8a9", "#c9caca"] },
+      "ink-3": { "role": "neutral", "displayName": "Graphite Three", "canonical": "#20262b", "lightMode": "#eceeea", "tonalRamp": ["#252a2e", "#313639", "#404548", "#54595b", "#6d7173", "#898d8e", "#a8acab", "#c9cbca"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "#252b30", "lightMode": "#dfe2dd", "tonalRamp": ["#292f33", "#353b3e", "#44494c", "#585d5f", "#707476", "#8c9091", "#aaadae", "#cbcdcd"] },
+      "rule-strong": { "role": "neutral", "displayName": "Strong Rule", "canonical": "#343b41", "lightMode": "#c9cdc7", "tonalRamp": ["#373e43", "#43494e", "#51575b", "#656a6e", "#7b8083", "#96999c", "#b0b3b4", "#cfd1d1"] },
+      "text": { "role": "neutral", "displayName": "Warm Chalk", "canonical": "#e7e9e4", "lightMode": "#15191c", "tonalRamp": ["#414344", "#525454", "#646666", "#787a79", "#8d8f8d", "#a4a5a3", "#bbbcba", "#d1d2d0"] },
+      "dim": { "role": "neutral", "displayName": "Muted Alloy", "canonical": "#9aa3a7", "lightMode": "#525b60", "tonalRamp": ["#343a3d", "#444a4d", "#555b5e", "#696e71", "#7e8385", "#95999b", "#acafb0", "#c4c6c7"] },
+      "faint": { "role": "neutral", "displayName": "Faint Alloy", "canonical": "#899398", "lightMode": "#626b70", "tonalRamp": ["#272c2f", "#363b3e", "#484d50", "#5d6264", "#74787a", "#8c9092", "#a5a8a9", "#bec0c1"] },
+      "frontend": { "role": "primary", "displayName": "Vantage Blue", "canonical": "#7aa7ff", "lightMode": "#2f6fdf", "tonalRamp": ["#172542", "#1d3159", "#244076", "#31549a", "#456fbd", "#638bd8", "#86a7e8", "#aec5f2"] },
+      "api": { "role": "secondary", "displayName": "Signal Green", "canonical": "#58d68d", "lightMode": "#1f9d5a", "tonalRamp": ["#123022", "#17422e", "#1d573b", "#276f4c", "#38885f", "#50a476", "#70bf91", "#99d7af"] },
+      "service": { "role": "secondary", "displayName": "Service Amber", "canonical": "#f5a25d", "lightMode": "#c96a14", "tonalRamp": ["#382416", "#4e311c", "#674124", "#84542e", "#a36b3c", "#c3854d", "#dda168", "#edc08a"] },
+      "ai": { "role": "secondary", "displayName": "Intelligence Lilac", "canonical": "#b79bff", "lightMode": "#7a52e0", "tonalRamp": ["#29213e", "#382d54", "#49396f", "#5d4a8d", "#745eaa", "#8d75c4", "#a891dc", "#c3b0ed"] },
+      "data": { "role": "secondary", "displayName": "Data Cyan", "canonical": "#47c9d6", "lightMode": "#0f8f9c", "tonalRamp": ["#102e32", "#164145", "#1d555a", "#276c72", "#34848b", "#469da3", "#60b7bc", "#82ced1"] },
+      "external": { "role": "secondary", "displayName": "External Gold", "canonical": "#e9c46a", "lightMode": "#a87f0a", "tonalRamp": ["#342c18", "#493b1d", "#604d24", "#79632f", "#947b3e", "#b09553", "#c9af6f", "#dec98f"] },
+      "utility": { "role": "neutral", "displayName": "Utility Grey", "canonical": "#8b959a", "lightMode": "#6a7378", "tonalRamp": ["#303639", "#404649", "#52585b", "#666c6f", "#7c8184", "#93989a", "#abb0b1", "#c3c7c8"] },
+      "broken": { "role": "tertiary", "displayName": "Fault Red", "canonical": "#ff6b6b", "lightMode": "#d93c3c", "tonalRamp": ["#3a1e1e", "#512626", "#6b3030", "#873d3d", "#a64d4d", "#c26060", "#da7979", "#eb9696"] },
+      "new": { "role": "secondary", "displayName": "New Green", "canonical": "#58d68d", "lightMode": "#1f9d5a", "tonalRamp": ["#123022", "#17422e", "#1d573b", "#276f4c", "#38885f", "#50a476", "#70bf91", "#99d7af"] },
+      "modified": { "role": "secondary", "displayName": "Modified Gold", "canonical": "#e9c46a", "lightMode": "#b78a06", "tonalRamp": ["#342c18", "#493b1d", "#604d24", "#79632f", "#947b3e", "#b09553", "#c9af6f", "#dec98f"] },
+      "removed": { "role": "tertiary", "displayName": "Removed Red", "canonical": "#ff6b6b", "lightMode": "#d93c3c", "tonalRamp": ["#3a1e1e", "#512626", "#6b3030", "#873d3d", "#a64d4d", "#c26060", "#da7979", "#eb9696"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Rare connection and access-state heading." },
+      "headline": { "displayName": "Headline", "purpose": "Repository and compact view identity." },
+      "title": { "displayName": "Title", "purpose": "Graph-node labels and compact section content." },
+      "body": { "displayName": "Body", "purpose": "Interface prose." },
+      "label": { "displayName": "Technical Label", "purpose": "Repository identifiers and compact metadata in Fragment Mono." }
+    },
+    "shadows": [
+      { "name": "city-block-shadow", "value": "filter: blur(9px); background: var(--shadow)", "purpose": "Ground 3D city blocks on the perspective floor." },
+      { "name": "selected-node-glow", "value": "0 0 0 1px var(--c), 0 0 26px color-mix(in oklab, var(--c) 55%, transparent)", "purpose": "Mark the selected 3D city block." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "160ms ease", "purpose": "Short stroke, fill, and opacity changes." },
+      { "name": "component-transition", "value": "180ms ease", "purpose": "Graph-node opacity and interaction state." },
+      { "name": "change-tick-in", "value": "420ms cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Report a newly observed save in the change tape." }
+    ],
+    "breakpoints": [
+      { "name": "panel-wide", "value": "md (Tailwind default)", "purpose": "Switch details panel from bottom sheet to fixed side panel." },
+      { "name": "toolbar-wide", "value": "sm (Tailwind default)", "purpose": "Move top-bar controls from wrapped to horizontal layout." }
+    ],
+    "components": [
+      {
+        "name": "Lens Option",
+        "kind": "button",
+        "refersTo": "lens-option",
+        "description": "A selected or unselected lens in the compact view switch.",
+        "html": "<button class=\"ds-lens-option\" type=\"button\">Architecture</button>",
+        "css": ".ds-lens-option { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 4px; background: var(--color-ink-3); color: var(--color-text); font: 11.5px 'Archivo Variable', ui-sans-serif, sans-serif; cursor: pointer; transition: color 160ms ease, background-color 160ms ease; } .ds-lens-option:hover { color: var(--color-text); } .ds-lens-option:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 2px; } .ds-lens-option:active { background: var(--color-ink-2); }"
+      },
+      {
+        "name": "Search Field",
+        "kind": "input",
+        "refersTo": "search-field",
+        "description": "A compact repository search field with a quiet leading mark.",
+        "html": "<label class=\"ds-search\"><span aria-hidden=\"true\">⌕</span><input aria-label=\"Search components\" placeholder=\"Find a component or file\" /></label>",
+        "css": ".ds-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--color-rule); border-radius: 6px; background: var(--color-ink-0); color: var(--color-faint); } .ds-search input { min-width: 210px; border: 0; outline: 0; background: transparent; color: var(--color-text); font: 12.5px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-search input::placeholder { color: var(--color-faint); } .ds-search:focus-within { border-color: var(--color-rule-strong); } .ds-search:focus-within input:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 3px; }"
+      },
+      {
+        "name": "Category Filter",
+        "kind": "chip",
+        "refersTo": "category-filter",
+        "description": "A semantic category toggle with swatch and count.",
+        "html": "<button class=\"ds-category\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-swatch\"></span>frontend <small>12</small></button>",
+        "css": ".ds-category { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--color-rule); border-radius: 9999px; background: var(--color-ink-2); color: var(--color-text); font: 11.5px 'Archivo Variable', ui-sans-serif, sans-serif; cursor: pointer; } .ds-category:hover { border-color: var(--color-rule-strong); } .ds-category:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 2px; } .ds-swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--color-frontend); } .ds-category small { color: var(--color-faint); font: 10px 'Fragment Mono', ui-monospace, monospace; }"
+      },
+      {
+        "name": "Architecture Node",
+        "kind": "custom",
+        "refersTo": "graph-node",
+        "description": "A graph component block with category identity, label, and source path.",
+        "html": "<button class=\"ds-node\" type=\"button\"><span class=\"ds-node-kind\">frontend</span><strong>TopBar</strong><code>src/components/TopBar.tsx</code></button>",
+        "css": ".ds-node { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 184px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--color-frontend) 38%, transparent); border-radius: 7px; background: color-mix(in oklab, var(--color-frontend) 9%, var(--color-ink-2)); color: var(--color-text); text-align: left; cursor: pointer; } .ds-node:hover { border-color: color-mix(in oklab, var(--color-frontend) 75%, transparent); } .ds-node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 2px; } .ds-node strong { font: 620 13px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-node-kind, .ds-node code { color: var(--color-dim); font: 10px 'Fragment Mono', ui-monospace, monospace; } .ds-node-kind { color: var(--color-frontend); text-transform: uppercase; letter-spacing: .08em; }"
+      },
+      {
+        "name": "Details Panel Header",
+        "kind": "custom",
+        "refersTo": "details-panel",
+        "description": "A stable title and source identity block at the top of node details.",
+        "html": "<section class=\"ds-panel\"><span>frontend · UI lane</span><h2>TopBar</h2><code>src/components/TopBar.tsx</code></section>",
+        "css": ".ds-panel { padding: 16px 20px; border-bottom: 1px solid var(--color-rule); background: var(--color-ink-1); color: var(--color-text); } .ds-panel span { color: var(--color-frontend); font: 10.5px 'Fragment Mono', ui-monospace, monospace; text-transform: uppercase; } .ds-panel h2 { margin: 8px 0 4px; font: 680 22px/1.2 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-panel code { color: var(--color-dim); font: 11.5px 'Fragment Mono', ui-monospace, monospace; overflow-wrap: anywhere; }"
+      }
+    ],
+    "narrative": {
+      "northStar": "The Live Architecture Atlas",
+      "overview": "Eyrie is a precise instrument for seeing a codebase from above. Its interface is quiet and information-dense: graphite surfaces recede, thin rules organize the frame, and semantic colour marks the structure that matters. The graph itself is the image; controls and chrome stay legible without competing with it.\n\nThe map remains alive as source code changes. Motion reports those changes and helps preserve orientation; it is never ambient decoration. The visual language should feel precise, quiet, technical, alive, and trustworthy. It should not resemble a marketing dashboard, a mind-mapping toy, or a generic node editor.",
+      "keyCharacteristics": [
+        "A fixed, full-height instrument shell around a pannable architecture map.",
+        "Category colours are semantic claims; each hue keeps one meaning.",
+        "Real repository identifiers use monospace; Eyrie's prose uses Archivo.",
+        "State changes remain legible without colour alone."
+      ],
+      "rules": [
+        { "name": "The One Hue, One Meaning Rule", "body": "A category colour is never decorative or reassigned to another category. Define every new colour in both schemes and derive state tints with color-mix(in oklab, ...) where possible.", "section": "colors" },
+        { "name": "The Meaning Has Two Channels Rule", "body": "Never communicate a change or edge type with colour alone. Change state also has a +, ~, or − badge; edge kinds use line patterns as well as colour.", "section": "colors" },
+        { "name": "The Identifier Rule", "body": "Use monospace for literal repository data and sans serif for Eyrie's interface language. Do not blur the distinction.", "section": "typography" },
+        { "name": "The Tonal-First Rule", "body": "Use surface tone and a one-pixel rule to separate ordinary layers. Reserve shadows and glow for the 3D model or a selected graph element.", "section": "elevation" }
+      ],
+      "dos": [
+        "Do preserve the UI → Edge → API → Logic → Data → External lane order.",
+        "Do define colour tokens for both dark and light schemes.",
+        "Do use monospace for source paths, routes, line numbers, and symbols.",
+        "Do keep visible keyboard focus and honour reduced motion in CSS and JavaScript.",
+        "Do use colour together with a badge, dash pattern, label, or other non-colour signal.",
+        "Do preserve stable node identity and position when code outside the changed region is unchanged."
+      ],
+      "donts": [
+        "Don't use category hues as decoration or swap their meanings.",
+        "Don't add ambient movement or animate unchanged graph layout.",
+        "Don't use shadows as the default separator for panels and controls.",
+        "Don't shrink graph nodes to fit a narrow viewport; let the lane ruler indicate off-screen content.",
+        "Don't lower tertiary text contrast below 4.5:1 on its neutral surface in either colour scheme."
+      ]
+    }
+  }
+}

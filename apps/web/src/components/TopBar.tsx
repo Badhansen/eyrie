@@ -18,7 +18,7 @@ export function TopBar() {
   }, [nodes]);
 
   return (
-    <header className="flex min-h-12 flex-wrap items-center gap-x-5 gap-y-2 border-b border-rule bg-ink-1 px-4 py-2">
+    <header className="eyrie-topbar flex min-h-12 flex-wrap items-center gap-x-5 gap-y-2 border-b border-rule bg-ink-1 px-4 py-2">
       <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
         <span className="font-mono text-[10px] tracking-[0.18em] text-faint uppercase">Eyrie</span>
         <h1 className="wide min-w-0 truncate text-[15px] font-[750] tracking-tight">{repo?.name ?? 'Connecting…'}</h1>
@@ -76,7 +76,7 @@ function LensSwitch() {
           aria-checked={lens === o.value}
           title={`${o.hint} (${o.key})`}
           onClick={() => store.setLens(o.value)}
-          className={`flex h-7 items-center gap-1.5 rounded px-2.5 text-[11.5px] whitespace-nowrap transition-colors ${lens === o.value ? 'bg-ink-3 text-text' : 'text-dim hover:text-text'}`}
+          className={`lens-option flex h-8 items-center gap-1.5 rounded px-2.5 text-[11.5px] whitespace-nowrap transition-colors ${lens === o.value ? 'bg-ink-3 text-text' : 'text-dim hover:text-text'}`}
         >
           {o.icon}
           <span className="hidden lg:inline">{o.label}</span>
@@ -124,7 +124,7 @@ function SearchBox() {
         }}
         placeholder="Find a component or file"
         aria-label="Search components"
-        className="h-8 w-full rounded-md border sm:w-72 border-rule bg-ink-0 pr-24 pl-8 text-[12.5px] text-text placeholder:text-faint focus:border-rule-strong focus:outline-none"
+        className="search-field h-8 w-full rounded-md border sm:w-72 border-rule bg-ink-0 pr-24 pl-8 text-[12.5px] text-text placeholder:text-faint focus:border-rule-strong"
       />
       <span className={`pointer-events-none absolute font-mono text-[10px] text-faint ${query ? 'right-8' : 'right-2'}`}>
         {query ? (
@@ -155,7 +155,7 @@ function Filters({ present }: { present: { cat: ArchCategory; count: number }[] 
             aria-pressed={on}
             onClick={() => store.toggleCategory(cat)}
             title={on ? `Hide ${CATEGORY_LABEL[cat]}` : `Show ${CATEGORY_LABEL[cat]}`}
-            className={`cat-${cat} flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] transition-colors ${
+            className={`cat-${cat} category-filter flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] transition-colors ${
               on ? 'border-rule bg-ink-2 text-text hover:border-rule-strong' : 'border-dashed border-rule text-faint hover:text-dim'
             }`}
           >

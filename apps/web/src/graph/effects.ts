@@ -41,11 +41,11 @@ function particle(layer: SVGGElement, r: number, className: string): SVGCircleEl
 }
 
 /** Sends one request travelling along a path. */
-export function sendParticle(layer: SVGGElement, path: SVGPathElement, opts: { delay?: number; r?: number } = {}): void {
-  if (reducedMotion()) return;
+export function sendParticle(layer: SVGGElement, path: SVGPathElement, opts: { delay?: number; r?: number; className?: string } = {}): () => void {
+  if (reducedMotion()) return () => {};
   const len = path.getTotalLength();
-  if (!len) return;
-  const dot = particle(layer, opts.r ?? 3, 'particle');
+  if (!len) return () => {};
+  const dot = particle(layer, opts.r ?? 3, opts.className ?? 'particle');
   const motion = createMotionPath(path);
   animate(dot, {
     translateX: motion.translateX,
@@ -55,6 +55,16 @@ export function sendParticle(layer: SVGGElement, path: SVGPathElement, opts: { d
     ease: 'inOutSine',
     onComplete: () => dot.remove(),
   });
+  return () => {
+    utils.remove(dot);
+    dot.remove();
+  };
+}
+
+/** One bounded sweep makes the selected component's dependencies visible. */
+export function traceSelection(layer: SVGGElement, paths: SVGPathElement[]): () => void {
+  const stops = paths.slice(0, 18).map((path, i) => sendParticle(layer, path, { delay: i * 12, r: 3.2, className: 'particle selection-particle' }));
+  return () => stops.forEach((stop) => stop());
 }
 
 /** Continuous request flow along a set of paths; returns a stop function. */
