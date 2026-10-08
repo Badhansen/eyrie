@@ -88,9 +88,9 @@ packages/
 apps/
   web/           React UI: ELK layout, D3 2D view, CSS 3D city view, anime.js animation
 fixtures/
-  next-resume-app/   sample Next.js app used by tests and demos
-docs/
-  design.md      original product and architecture design
+  bookstore-app/ sample Next.js app used by tests and demos
+scripts/
+  fetch-smoke-repo.sh  clones a real OSS app into .smoke/ for the smoke test
 LICENSE          GNU AGPL-3.0
 ```
 
@@ -98,7 +98,17 @@ LICENSE          GNU AGPL-3.0
 pnpm test          # parser, graph, architecture, lens, engine (real file watcher) and server tests
 pnpm typecheck
 pnpm dev           # engine on :4319 (fixture app, token "dev") + UI with hot reload on :5173
+
+pnpm smoke:fetch   # clone a real MIT-licensed Next.js app into .smoke/ (once)
+pnpm smoke         # scan that real repo end to end; skips if it was never fetched
 ```
+
+`pnpm test` is hermetic and offline: it runs against `fixtures/bookstore-app`, a small
+hand-written Next.js app whose every asserted edge is a claim about how resolution
+*should* behave. `pnpm smoke` is the opposite check — it scans a ~290-file third-party
+repo to confirm Eyrie survives code nobody wrote for it, asserting shape and health
+rather than specific edges. That repo is cloned into the gitignored `.smoke/`, never
+vendored, so this project carries no third-party code.
 
 During `pnpm dev`, open `http://localhost:5173/?token=dev`.
 

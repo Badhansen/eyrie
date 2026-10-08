@@ -11,7 +11,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "dev": "tsx watch --clear-screen=false src/cli.ts ../../fixtures/next-resume-app --port 4319 --token dev --no-open"
+    "dev": "tsx watch --clear-screen=false src/cli.ts ../../fixtures/bookstore-app --port 4319 --token dev --no-open"
   },
   "dependencies": {
     "@eyrie/architecture": "workspace:*",

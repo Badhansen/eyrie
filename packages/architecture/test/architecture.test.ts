@@ -22,85 +22,93 @@ describe('architecture derivation', () => {
     const { nodes, edges } = readable(arch);
     expect(nodes).toEqual([
       'api:Auth Session API',
-      'api:Resume API',
-      'api:Resume Detail API',
-      'api:Resume Generate API',
+      'api:Book API',
+      'api:Book Recommend API',
+      'api:Order API',
+      'api:Order Checkout API',
+      'api:Order Detail API',
       'api:Stripe Webhook API',
-      'data:Resume',
-      'data:ResumeRepository',
-      'data:ResumeVersion',
-      'data:Subscription',
-      'data:User',
+      'data:Book',
+      'data:Customer',
+      'data:Order',
+      'data:OrderItem',
+      'data:OrderRepository',
+      'data:Payment',
       'edge:Middleware',
+      'external:Algolia',
       'external:OpenAI',
       'external:Stripe',
-      'logic:AIService',
       'logic:Auth Service',
-      'logic:Payment Service',
-      'logic:ResumeService',
+      'logic:CatalogService',
+      'logic:OrderService',
+      'logic:PaymentService',
+      'logic:RecommenderService',
+      'logic:Webhook Service',
+      'ui:BookBrowser',
       'ui:Dashboard Page',
       'ui:Home Page',
-      'ui:Resume Detail Page',
-      'ui:ResumeEditor',
-      'ui:ResumeList',
-      'ui:ResumeViewer',
+      'ui:Order Detail Page',
+      'ui:OrderList',
+      'ui:OrderViewer',
     ]);
     // Presentational components, hooks, utilities and SDK client wrappers are folded away.
-    expect(nodes.some((n) => /Button|useResumes|Format|Prompt|Prisma/.test(n))).toBe(false);
+    expect(nodes.some((n) => /Button|useOrders|Format|Prompt|Summary|Prisma/.test(n))).toBe(false);
     expect(edges).toEqual(
       expect.arrayContaining([
-        'Dashboard Page -> ResumeEditor',
-        'ResumeEditor -> Resume Generate API',
-        'ResumeList -> Resume API',
-        'Resume Generate API -> ResumeService',
-        'Resume Generate API -> Auth Service',
-        'ResumeService -> AIService',
-        'ResumeService -> ResumeRepository',
-        'AIService -> OpenAI',
-        'ResumeRepository -> Resume',
-        'ResumeRepository -> ResumeVersion',
-        'Stripe Webhook API -> Payment Service',
-        'Payment Service -> Stripe',
-        'Payment Service -> Subscription',
+        'Dashboard Page -> BookBrowser',
+        'BookBrowser -> Order Checkout API',
+        'OrderList -> Order API',
+        'Order Checkout API -> OrderService',
+        'Order Checkout API -> Auth Service',
+        'OrderService -> PaymentService',
+        'OrderService -> OrderRepository',
+        'PaymentService -> Stripe',
+        'OrderRepository -> Order',
+        'OrderRepository -> OrderItem',
+        'CatalogService -> Algolia',
+        'RecommenderService -> OpenAI',
+        'Stripe Webhook API -> Webhook Service',
+        'Webhook Service -> Stripe',
+        'Webhook Service -> Payment',
       ]),
     );
   });
 
   it('colors AI services and records pass-through hops', () => {
     const arch = deriveArchitecture(repo.index);
-    expect(arch.nodes.find((n) => n.label === 'AIService')?.category).toBe('ai');
-    const list = arch.nodes.find((n) => n.label === 'ResumeList')!;
-    const api = arch.nodes.find((n) => n.label === 'Resume API')!;
+    expect(arch.nodes.find((n) => n.label === 'RecommenderService')?.category).toBe('ai');
+    const list = arch.nodes.find((n) => n.label === 'OrderList')!;
+    const api = arch.nodes.find((n) => n.label === 'Order API')!;
     const edge = arch.edges.find((e) => e.source === list.id && e.target === api.id)!;
     expect(edge.kinds).toEqual(['HTTP_CALL']);
-    expect(edge.via).toEqual(['useResumes']);
+    expect(edge.via).toEqual(['useOrders']);
   });
 
   it('uses doc comments as component summaries', () => {
     const arch = deriveArchitecture(repo.index);
-    expect(arch.nodes.find((n) => n.label === 'Resume Generate API')?.summary).toBe('Generates a tailored resume from the current CV and a job description.');
-    expect(arch.nodes.find((n) => n.label === 'OpenAI')?.summary).toBe('AI provider (OpenAI). Used by AIService.');
+    expect(arch.nodes.find((n) => n.label === 'Order Checkout API')?.summary).toBe('Charges the basket and records the order.');
+    expect(arch.nodes.find((n) => n.label === 'OpenAI')?.summary).toBe('AI provider (OpenAI). Used by RecommenderService.');
   });
 
   it('keeps architecture ids stable and shows a new service after an edit', async () => {
     const before = deriveArchitecture(repo.index);
     await repo.write(
-      'src/services/job-matcher.service.ts',
-      `import { AIService } from './ai.service';\nexport class JobMatcher {\n  private ai = new AIService();\n  match(a: string) { return this.ai.complete(a); }\n}\n`,
+      'src/services/gift.service.ts',
+      `import { RecommenderService } from './recommender.service';\nexport class GiftService {\n  private recommender = new RecommenderService();\n  suggest(customerId: string) { return this.recommender.suggest(customerId); }\n}\n`,
     );
-    const r = 'src/services/resume.service.ts';
+    const r = 'src/services/order.service.ts';
     await repo.write(
       r,
       repo.files
         .get(r)!
-        .replace("import { AIService } from './ai.service';", "import { AIService } from './ai.service';\nimport { JobMatcher } from './job-matcher.service';")
-        .replace('const tailored', 'new JobMatcher().match(cv);\n    const tailored'),
+        .replace("import { PaymentService } from './payment.service';", "import { PaymentService } from './payment.service';\nimport { GiftService } from './gift.service';")
+        .replace('const reference', 'new GiftService().suggest(customerId);\n    const reference'),
     );
     const after = deriveArchitecture(repo.index);
     const beforeIds = new Set(before.nodes.map((n) => n.id));
     const added = after.nodes.filter((n) => !beforeIds.has(n.id)).map((n) => n.label);
-    expect(added).toEqual(['JobMatcher']);
-    expect(readable(after).edges).toEqual(expect.arrayContaining(['ResumeService -> JobMatcher', 'JobMatcher -> AIService']));
+    expect(added).toEqual(['GiftService']);
+    expect(readable(after).edges).toEqual(expect.arrayContaining(['OrderService -> GiftService', 'GiftService -> RecommenderService']));
   });
 });
 

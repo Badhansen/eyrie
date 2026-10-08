@@ -6,3 +6,6 @@ dist/
 coverage/
 .vite/
 .playwright-mcp/
+
+# Smoke-test clone of a real open-source repo (fetched by scripts/fetch-smoke-repo.sh)
+.smoke/

@@ -15,6 +15,8 @@
     "eyrie": "tsx packages/server/src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "smoke:fetch": "bash scripts/fetch-smoke-repo.sh",
+    "smoke": "vitest run --config vitest.smoke.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @eyrie/web typecheck"
   },
   "devDependencies": {

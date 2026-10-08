@@ -78,15 +78,15 @@ export type SymbolKind =
 
 export interface FieldFact {
   name: string;
-  /** Declared type name (root identifier), e.g. `ResumeService`. */
+  /** Declared type name (root identifier), e.g. `OrderService`. */
   type?: string;
-  /** Class instantiated in the initializer, e.g. `new ResumeService()`. */
+  /** Class instantiated in the initializer, e.g. `new OrderService()`. */
   instanceOf?: string;
 }
 
 export interface SymbolFact {
   name: string;
-  /** Dotted name inside the file, e.g. `ResumeService.generate`. */
+  /** Dotted name inside the file, e.g. `OrderService.checkout`. */
   qualifiedName: string;
   kind: SymbolKind;
   startLine: number;

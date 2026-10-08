@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GraphEngine, type EngineBatch } from '../src/index.js';
 
-const FIXTURE = fileURLToPath(new URL('../../../fixtures/next-resume-app', import.meta.url));
+const FIXTURE = fileURLToPath(new URL('../../../fixtures/bookstore-app', import.meta.url));
 
 function nextBatch(engine: GraphEngine, timeoutMs = 5000): Promise<EngineBatch> {
   return new Promise((resolve, reject) => {
@@ -39,8 +39,8 @@ describe('GraphEngine', () => {
     engine = new GraphEngine({ root: dir, dataDir, watch: false });
     await engine.start();
     expect(engine.repo.frameworks).toEqual(expect.arrayContaining(['next', 'prisma', 'react']));
-    expect(engine.stats.files).toBe(26);
-    expect(engine.architecture.nodes.map((n) => n.label)).toEqual(expect.arrayContaining(['ResumeService', 'Resume Generate API', 'OpenAI']));
+    expect(engine.stats.files).toBe(32);
+    expect(engine.architecture.nodes.map((n) => n.label)).toEqual(expect.arrayContaining(['OrderService', 'Order Checkout API', 'OpenAI']));
   });
 
   it('updates the architecture live when a file is created and edited', async () => {
@@ -49,30 +49,30 @@ describe('GraphEngine', () => {
 
     let batch = nextBatch(engine);
     writeFileSync(
-      join(dir, 'src/services/job-matcher.service.ts'),
-      `import { AIService } from './ai.service';\nexport class JobMatcher {\n  private ai = new AIService();\n  match(a: string) { return this.ai.complete(a); }\n}\n`,
+      join(dir, 'src/services/shipping.service.ts'),
+      `import { PaymentService } from './payment.service';\nexport class ShippingService {\n  private payments = new PaymentService();\n  quote(a: number) { return this.payments.charge(a); }\n}\n`,
     );
     let b = await batch;
-    expect(b.files).toEqual([{ file: 'src/services/job-matcher.service.ts', change: 'add' }]);
-    expect(b.architecture.addedNodes.map((n) => n.label)).toEqual(['JobMatcher']);
+    expect(b.files).toEqual([{ file: 'src/services/shipping.service.ts', change: 'add' }]);
+    expect(b.architecture.addedNodes.map((n) => n.label)).toEqual(['ShippingService']);
 
-    const servicePath = join(dir, 'src/services/resume.service.ts');
+    const servicePath = join(dir, 'src/services/order.service.ts');
     batch = nextBatch(engine);
     writeFileSync(
       servicePath,
       readFileSync(servicePath, 'utf8')
-        .replace("import { AIService } from './ai.service';", "import { AIService } from './ai.service';\nimport { JobMatcher } from './job-matcher.service';")
-        .replace('const tailored', 'new JobMatcher().match(cv);\n    const tailored'),
+        .replace("import { PaymentService } from './payment.service';", "import { PaymentService } from './payment.service';\nimport { ShippingService } from './shipping.service';")
+        .replace('const reference', 'new ShippingService().quote(totalCents);\n    const reference'),
     );
     b = await batch;
     const label = new Map(engine.architecture.nodes.map((n) => [n.id, n.label]));
-    expect(b.architecture.addedEdges.map((e) => `${label.get(e.source)} -> ${label.get(e.target)}`)).toContain('ResumeService -> JobMatcher');
+    expect(b.architecture.addedEdges.map((e) => `${label.get(e.source)} -> ${label.get(e.target)}`)).toContain('OrderService -> ShippingService');
     expect(b.reresolved).toBeLessThan(5);
 
     batch = nextBatch(engine);
-    unlinkSync(join(dir, 'src/services/job-matcher.service.ts'));
+    unlinkSync(join(dir, 'src/services/shipping.service.ts'));
     b = await batch;
-    expect(b.files).toEqual([{ file: 'src/services/job-matcher.service.ts', change: 'unlink' }]);
+    expect(b.files).toEqual([{ file: 'src/services/shipping.service.ts', change: 'unlink' }]);
     expect(b.architecture.removedNodes).toHaveLength(1);
   });
 
@@ -83,7 +83,7 @@ describe('GraphEngine', () => {
     await engine.stop();
     engine = new GraphEngine({ root: dir, dataDir, watch: false, log: (m) => logs.push(m) });
     await engine.start();
-    expect(logs[0]).toMatch(/0 parsed, 26 from cache/);
+    expect(logs[0]).toMatch(/0 parsed, 32 from cache/);
   });
 
   it('never serves files outside the index', async () => {

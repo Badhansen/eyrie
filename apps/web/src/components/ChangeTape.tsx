@@ -17,7 +17,7 @@ function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
 
-/** "Added src/x.ts → +1 component (JobMatcher), +2 links". */
+/** "Added src/x.ts → +1 component (ShippingService), +2 links". */
 export function describeFrame(f: ChangeFrame): { action: string; result: string } {
   const verb = { add: 'Added', change: 'Edited', unlink: 'Deleted' } as const;
   let action: string;

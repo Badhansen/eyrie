@@ -9,7 +9,7 @@ import type { ServerMessage } from '@eyrie/core';
 import { GraphEngine } from '@eyrie/engine';
 import { startServer, type RunningServer } from '../src/index.js';
 
-const FIXTURE = fileURLToPath(new URL('../../../fixtures/next-resume-app', import.meta.url));
+const FIXTURE = fileURLToPath(new URL('../../../fixtures/bookstore-app', import.meta.url));
 const TOKEN = 'test-token';
 
 describe('server', () => {
@@ -46,10 +46,10 @@ describe('server', () => {
 
   it('serves the architecture, component details and source', async () => {
     const state = (await (await get('/api/state')).json()) as { architecture: { nodes: { id: string; label: string }[] } };
-    const svc = state.architecture.nodes.find((n) => n.label === 'ResumeService')!;
+    const svc = state.architecture.nodes.find((n) => n.label === 'OrderService')!;
     const details = (await (await get(`/api/arch/${svc.id}`)).json()) as { members: { qualifiedName: string }[] };
-    expect(details.members.map((m) => m.qualifiedName)).toEqual(expect.arrayContaining(['ResumeService', 'ResumeService.generate', 'resumeService']));
-    const src = (await (await get('/api/source?file=src/services/ai.service.ts&start=1&end=3')).json()) as { lines: string[] };
+    expect(details.members.map((m) => m.qualifiedName)).toEqual(expect.arrayContaining(['OrderService', 'OrderService.checkout', 'orderService']));
+    const src = (await (await get('/api/source?file=src/services/recommender.service.ts&start=1&end=3')).json()) as { lines: string[] };
     expect(src.lines[0]).toContain("from '@/lib/openai'");
     expect((await get('/api/source?file=package.json')).status).toBe(404);
   });
@@ -62,6 +62,6 @@ describe('server', () => {
     });
     ws.close();
     expect(msg.type).toBe('hello');
-    if (msg.type === 'hello') expect(msg.architecture.nodes.length).toBe(23);
+    if (msg.type === 'hello') expect(msg.architecture.nodes.length).toBe(29);
   });
 });

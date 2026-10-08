@@ -7,7 +7,7 @@
       "runtimeArgs": [
         "tsx",
         "packages/server/src/cli.ts",
-        "fixtures/next-resume-app",
+        "fixtures/bookstore-app",
         "--port",
         "4319",
         "--no-open",

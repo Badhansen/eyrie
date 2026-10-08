@@ -58,9 +58,9 @@ describe('data-flow lens', () => {
   });
 
   it('keeps an edge that both reads and writes pointing at the store', () => {
-    const nodes = [node('Repo', 'repository'), node('Resume', 'database_model')];
-    const flow = dataFlowLens(nodes, [edge('Repo', 'Resume', ['READS_FROM', 'WRITES_TO'])]);
-    expect(roles(flow)).toEqual(['readwrite Repo -> Resume']);
+    const nodes = [node('Repo', 'repository'), node('Order', 'database_model')];
+    const flow = dataFlowLens(nodes, [edge('Repo', 'Order', ['READS_FROM', 'WRITES_TO'])]);
+    expect(roles(flow)).toEqual(['readwrite Repo -> Order']);
     expect(flow.edges[0]?.meta?.flipped).toBe(false);
   });
 
@@ -100,18 +100,20 @@ describe('lenses over the fixture app', () => {
     const flow = dataFlowLens(arch.nodes, arch.edges);
     expect(roles(flow)).toEqual(
       expect.arrayContaining([
-        'read User -> Auth Service',
-        'readwrite ResumeRepository -> Resume',
-        'write ResumeRepository -> ResumeVersion',
-        'write Payment Service -> Subscription',
-        'transfer ResumeList -> Resume API',
-        'transfer AIService -> OpenAI',
-        'transfer Payment Service -> Stripe',
-        'carry Resume API -> ResumeService',
+        'read Customer -> Auth Service',
+        'read Book -> CatalogService',
+        'readwrite OrderRepository -> Order',
+        'write OrderRepository -> OrderItem',
+        'write Webhook Service -> Payment',
+        'transfer OrderList -> Order API',
+        'transfer RecommenderService -> OpenAI',
+        'transfer CatalogService -> Algolia',
+        'transfer PaymentService -> Stripe',
+        'carry Order API -> OrderService',
       ]),
     );
     // Every network and SDK crossing is a transfer, not an in-process hand-off.
-    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(5);
+    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(7);
     // The static home page and the middleware touch no data, so they drop out.
     const kept = new Set(flow.nodes.map((n) => n.label));
     expect(kept.has('Home Page')).toBe(false);
@@ -122,7 +124,7 @@ describe('lenses over the fixture app', () => {
 
   it('offers pages and routes as places a request can start', () => {
     const starts = entryPoints(arch.nodes, arch.edges).map((n) => `${n.kind}:${n.label}`);
-    expect(starts.slice(0, 2)).toEqual(['page:Dashboard Page', 'page:Resume Detail Page']);
+    expect(starts.slice(0, 2)).toEqual(['page:Dashboard Page', 'page:Order Detail Page']);
     expect(starts).toContain('api_route:Stripe Webhook API');
     // Nothing calls out of the home page, so there is no sequence to show.
     expect(starts.some((s) => s.includes('Home Page'))).toBe(false);
@@ -133,29 +135,29 @@ describe('lenses over the fixture app', () => {
     const trace = sequenceTrace(arch.nodes, arch.edges, entry.id)!;
     expect(trace.truncated).toBe(false);
     expect(trace.steps.map((s) => `${s.depth} ${label.get(s.from)} -> ${label.get(s.to)}`)).toEqual([
-      '0 Dashboard Page -> ResumeList',
-      '1 ResumeList -> Resume API',
-      '2 Resume API -> Auth Service',
-      '3 Auth Service -> User',
-      '2 Resume API -> ResumeService',
-      '3 ResumeService -> AIService',
-      '4 AIService -> OpenAI',
-      '3 ResumeService -> ResumeRepository',
-      '4 ResumeRepository -> Resume',
-      '4 ResumeRepository -> ResumeVersion',
-      '0 Dashboard Page -> ResumeEditor',
-      '1 ResumeEditor -> Resume Generate API',
-      '2 Resume Generate API -> Auth Service',
-      '2 Resume Generate API -> ResumeService',
+      '0 Dashboard Page -> OrderList',
+      '1 OrderList -> Order API',
+      '2 Order API -> Auth Service',
+      '3 Auth Service -> Customer',
+      '2 Order API -> OrderService',
+      '3 OrderService -> PaymentService',
+      '4 PaymentService -> Stripe',
+      '3 OrderService -> OrderRepository',
+      '4 OrderRepository -> Order',
+      '4 OrderRepository -> OrderItem',
+      '0 Dashboard Page -> BookBrowser',
+      '1 BookBrowser -> Order Checkout API',
+      '2 Order Checkout API -> Auth Service',
+      '2 Order Checkout API -> OrderService',
     ]);
     // Within one caller, the source line decides: route.ts:6 before route.ts:7.
-    const fromRoute = trace.steps.filter((s) => label.get(s.from) === 'Resume API');
+    const fromRoute = trace.steps.filter((s) => label.get(s.from) === 'Order API');
     expect(fromRoute.map((s) => s.site?.line)).toEqual([6, 7]);
     // The first lifeline is the entry point, and each appears once.
     expect(trace.participants[0]).toBe(entry.id);
     expect(new Set(trace.participants).size).toBe(trace.participants.length);
-    // Auth Service and ResumeService were expanded under Resume API already.
-    expect(trace.steps.filter((s) => s.collapsed).map((s) => label.get(s.to))).toEqual(['Auth Service', 'ResumeService']);
+    // Auth Service and OrderService were expanded under Order API already.
+    expect(trace.steps.filter((s) => s.collapsed).map((s) => label.get(s.to))).toEqual(['Auth Service', 'OrderService']);
   });
 });
 

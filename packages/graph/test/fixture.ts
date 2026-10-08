@@ -5,7 +5,7 @@ import { SourceParser } from '@eyrie/parser';
 import type { CodeNode } from '@eyrie/core';
 import { GraphIndex, type ProjectConfig } from '../src/index.js';
 
-export const FIXTURE_ROOT = fileURLToPath(new URL('../../../fixtures/next-resume-app', import.meta.url));
+export const FIXTURE_ROOT = fileURLToPath(new URL('../../../fixtures/bookstore-app', import.meta.url));
 
 export const FIXTURE_CONFIG: ProjectConfig = {
   aliases: [{ scope: '', baseUrl: '', paths: [{ pattern: '@/*', targets: ['src/*'] }] }],
@@ -24,7 +24,7 @@ function walk(dir: string): string[] {
 export class FixtureRepo {
   readonly files = new Map<string, string>();
   readonly parser = new SourceParser();
-  readonly index = new GraphIndex({ repoName: 'next-resume-app', config: FIXTURE_CONFIG });
+  readonly index = new GraphIndex({ repoName: 'bookstore-app', config: FIXTURE_CONFIG });
 
   static async load(): Promise<FixtureRepo> {
     const repo = new FixtureRepo();
