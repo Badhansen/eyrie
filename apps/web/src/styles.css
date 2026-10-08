@@ -1,0 +1,737 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/archivo/standard.css';
+@import '@fontsource/fragment-mono';
+
+/*
+ * Tokens. Graphite inks, warm off-white text, and the semantic palette:
+ * blue frontend · green API · orange service · purple AI · cyan data ·
+ * yellow external · grey utility · red broken.
+ */
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-ink-0: #0d1012;
+  --color-ink-1: #13171a;
+  --color-ink-2: #191e22;
+  --color-ink-3: #20262b;
+  --color-rule: #252b30;
+  --color-rule-strong: #343b41;
+  --color-text: #e7e9e4;
+  --color-dim: #9aa3a7;
+  --color-faint: #646d72;
+
+  --color-frontend: #7aa7ff;
+  --color-api: #58d68d;
+  --color-service: #f5a25d;
+  --color-ai: #b79bff;
+  --color-data: #47c9d6;
+  --color-external: #e9c46a;
+  --color-utility: #8b959a;
+  --color-broken: #ff6b6b;
+
+  --color-new: #58d68d;
+  --color-modified: #e9c46a;
+  --color-removed: #ff6b6b;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-ink-0: #f4f5f2;
+    --color-ink-1: #fbfbf9;
+    --color-ink-2: #ffffff;
+    --color-ink-3: #eceeea;
+    --color-rule: #dfe2dd;
+    --color-rule-strong: #c9cdc7;
+    --color-text: #15191c;
+    --color-dim: #525b60;
+    --color-faint: #8a9296;
+    --color-frontend: #2f6fdf;
+    --color-api: #1f9d5a;
+    --color-service: #c96a14;
+    --color-ai: #7a52e0;
+    --color-data: #0f8f9c;
+    --color-external: #a87f0a;
+    --color-utility: #6a7378;
+    --color-broken: #d93c3c;
+    --color-new: #1f9d5a;
+    --color-modified: #b78a06;
+    --color-removed: #d93c3c;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-0);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-frontend);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-frontend) 35%, transparent);
+}
+
+.wide {
+  font-stretch: 125%;
+}
+.condensed {
+  font-stretch: 87.5%;
+}
+
+/* ── category colour binding ───────────────────────────────────────────── */
+.cat-frontend { --c: var(--color-frontend); }
+.cat-api { --c: var(--color-api); }
+.cat-service { --c: var(--color-service); }
+.cat-ai { --c: var(--color-ai); }
+.cat-data { --c: var(--color-data); }
+.cat-external { --c: var(--color-external); }
+.cat-utility { --c: var(--color-utility); }
+.cat-broken { --c: var(--color-broken); }
+
+/* ── graph canvas ──────────────────────────────────────────────────────── */
+.graph {
+  --edge: color-mix(in oklab, var(--color-text) 22%, transparent);
+  --edge-hot: color-mix(in oklab, var(--color-text) 80%, transparent);
+  cursor: grab;
+  touch-action: none;
+}
+.graph:active {
+  cursor: grabbing;
+}
+
+.lane-band {
+  fill: color-mix(in oklab, var(--color-text) 2.2%, transparent);
+}
+.lane-band.alt {
+  fill: transparent;
+}
+.lane-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--color-faint);
+}
+.lane-rule {
+  stroke: var(--color-rule-strong);
+}
+.lane-offscreen {
+  fill: var(--color-dim);
+}
+.ruler-dot.new { fill: var(--color-new); }
+.ruler-dot.modified { fill: var(--color-modified); }
+.ruler-dot.removed { fill: var(--color-removed); }
+.ruler-bg {
+  fill: color-mix(in oklab, var(--color-ink-0) 82%, transparent);
+}
+
+.edge path.line {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.25;
+  transition: stroke 160ms ease, opacity 160ms ease;
+}
+.edge.http:not(.drawing) path.line {
+  stroke-dasharray: 5 4;
+}
+.edge.data path.line {
+  stroke: color-mix(in oklab, var(--color-data) 45%, transparent);
+}
+
+/* Data-flow lens: what the link carries. Reads point out of the store. */
+.edge.role-read path.line,
+.edge.role-write path.line,
+.edge.role-readwrite path.line {
+  stroke-width: 1.6;
+}
+.edge.role-read path.line {
+  stroke: color-mix(in oklab, var(--color-data) 70%, transparent);
+}
+.edge.role-write path.line,
+.edge.role-readwrite path.line {
+  stroke: color-mix(in oklab, var(--color-service) 72%, transparent);
+}
+.edge.role-transfer:not(.drawing) path.line {
+  stroke-dasharray: 5 4;
+}
+.edge.role-carry path.line {
+  stroke: color-mix(in oklab, var(--color-text) 13%, transparent);
+}
+.edge path.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  cursor: help;
+}
+.edge.hot path.line {
+  stroke: var(--edge-hot);
+  stroke-width: 1.75;
+}
+.edge.dim {
+  opacity: 0.12;
+}
+.edge.faded {
+  opacity: 0.35;
+}
+
+.node {
+  cursor: pointer;
+  transition: opacity 180ms ease;
+}
+.node .body {
+  fill: color-mix(in oklab, var(--c) 9%, var(--color-ink-2));
+  stroke: color-mix(in oklab, var(--c) 38%, transparent);
+  stroke-width: 1;
+  transition: stroke 160ms ease, fill 160ms ease;
+}
+.node .accent {
+  fill: var(--c);
+}
+.node .label {
+  font-size: 13px;
+  font-weight: 620;
+  font-stretch: 87.5%;
+  fill: var(--color-text);
+}
+.node .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--color-dim);
+}
+.node .kind {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: color-mix(in oklab, var(--c) 80%, var(--color-text));
+}
+.node:hover .body,
+.node:focus-visible .body {
+  stroke: color-mix(in oklab, var(--c) 75%, transparent);
+}
+.node:focus {
+  outline: none;
+}
+.node:focus-visible .body {
+  stroke-width: 2;
+}
+.node.selected .body {
+  stroke: var(--c);
+  stroke-width: 1.75;
+  fill: color-mix(in oklab, var(--c) 16%, var(--color-ink-2));
+}
+.node.selected .glow {
+  opacity: 1;
+}
+.node .glow {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 6;
+  opacity: 0;
+  filter: blur(6px);
+  transition: opacity 200ms ease;
+}
+.node.match .body {
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+}
+.node.dim {
+  opacity: 0.2;
+}
+.node.faded {
+  opacity: 0.55;
+}
+.node.broken .body {
+  stroke: var(--color-broken);
+  stroke-dasharray: 4 3;
+  fill: color-mix(in oklab, var(--color-broken) 10%, var(--color-ink-2));
+}
+
+/* change halos: colour + glyph, so "new" never reads as "API" */
+.node .halo {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  opacity: 0;
+}
+.node .badge {
+  opacity: 0;
+}
+.node .badge circle {
+  stroke: var(--color-ink-0);
+  stroke-width: 2;
+}
+.node .badge text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--color-ink-0);
+}
+.node.mark-new .halo { stroke: var(--color-new); opacity: 1; }
+.node.mark-new .badge { opacity: 1; }
+.node.mark-new .badge circle { fill: var(--color-new); }
+.node.mark-modified .halo { stroke: var(--color-modified); opacity: 1; }
+.node.mark-modified .badge { opacity: 1; }
+.node.mark-modified .badge circle { fill: var(--color-modified); }
+.node.mark-removed .halo { stroke: var(--color-removed); opacity: 1; }
+.node.mark-removed .badge { opacity: 1; }
+.node.mark-removed .badge circle { fill: var(--color-removed); }
+
+.node.mark-new .halo,
+.node.mark-modified .halo {
+  animation: halo-march 1.2s linear infinite;
+}
+.node.pulse .body {
+  animation: pulse 900ms ease-out 2;
+}
+
+.particle {
+  fill: var(--color-text);
+  pointer-events: none;
+}
+.ripple {
+  pointer-events: none;
+}
+
+@keyframes halo-march {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+@keyframes pulse {
+  0% {
+    stroke: var(--color-modified);
+    stroke-width: 4;
+  }
+  100% {
+    stroke-width: 1;
+  }
+}
+@keyframes tick-in {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes live-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.tick {
+  transform-origin: bottom;
+  animation: tick-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.live-dot {
+  animation: live-dot 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* scrollbars inside panels */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule-strong) transparent;
+}
+
+/* ── 3D view ───────────────────────────────────────────────────────────────
+ * The layout becomes a city floor: lanes are districts, components are blocks
+ * whose height encodes lines of code, dependencies are tracks on the ground.
+ * Light comes from the upper left, so left faces are lighter than front faces.
+ */
+.scene3d {
+  --edge: color-mix(in oklab, var(--color-text) 34%, transparent);
+  --edge-hot: color-mix(in oklab, var(--color-text) 90%, transparent);
+  --shadow: rgb(0 0 0 / 0.5);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 2300px;
+  perspective-origin: 50% 32%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--color-ink-3) 70%, transparent), transparent 62%),
+    var(--color-ink-0);
+}
+.scene3d.dragging {
+  cursor: grabbing;
+}
+.cam3d,
+.world3d,
+.blocks3d {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+}
+.cam3d {
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+.floor3d {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.floor3d .grid-line {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-text) 7%, transparent);
+  stroke-width: 1;
+}
+.lane3d {
+  fill: color-mix(in oklab, var(--color-text) 3.5%, transparent);
+}
+.lane3d.alt {
+  fill: transparent;
+}
+.lane3d-label {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  fill: color-mix(in oklab, var(--color-text) 26%, transparent);
+}
+.floor3d .edge path.line {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  transition: stroke 160ms ease, opacity 160ms ease;
+}
+.floor3d .edge.http:not(.drawing) path.line {
+  stroke-dasharray: 6 5;
+}
+.floor3d .edge.data path.line {
+  stroke: color-mix(in oklab, var(--color-data) 60%, transparent);
+}
+.floor3d .edge.hot path.line {
+  stroke: var(--edge-hot);
+  stroke-width: 2.4;
+}
+.floor3d .edge.dim {
+  opacity: 0.1;
+}
+.floor3d .edge.faded {
+  opacity: 0.35;
+}
+.floor3d .edge.pending {
+  opacity: 0;
+}
+.floor3d .edge path.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+}
+.floor3d .particle {
+  fill: var(--color-text);
+  filter: drop-shadow(0 0 4px var(--color-text));
+}
+
+.ripple {
+  fill: none;
+  stroke-width: 2;
+}
+.ripple-new { stroke: var(--color-new); }
+.ripple-modified { stroke: var(--color-modified); }
+.ripple-removed { stroke: var(--color-removed); }
+
+.block3d {
+  --w: 184px;
+  --d: 52px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--w);
+  height: var(--d);
+  transform-style: preserve-3d;
+  transform: translate3d(var(--x), var(--y), var(--lift, 0px));
+  cursor: pointer;
+  outline: none;
+}
+.block3d .b-face,
+.block3d .b-shadow,
+.block3d .b-ring {
+  position: absolute;
+  box-sizing: border-box;
+  transition: opacity 180ms ease;
+}
+.block3d .b-top {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateZ(var(--h));
+  border-radius: 7px;
+  padding: 6px 10px 0 13px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in oklab, var(--c) 15%, var(--color-ink-2));
+  border: 1px solid color-mix(in oklab, var(--c) 60%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 10%, transparent);
+}
+.block3d .b-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--c);
+}
+.block3d .b-front,
+.block3d .b-back {
+  left: 0;
+  width: 100%;
+  height: var(--h);
+  transform-origin: top;
+  transform: rotateX(90deg);
+}
+.block3d .b-front {
+  top: 100%;
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--c) 30%, var(--color-ink-1)), color-mix(in oklab, var(--c) 18%, var(--color-ink-0)));
+}
+.block3d .b-back {
+  top: 0;
+  background: color-mix(in oklab, var(--c) 14%, var(--color-ink-0));
+}
+.block3d .b-left,
+.block3d .b-right {
+  top: 0;
+  width: var(--h);
+  height: 100%;
+  transform-origin: left;
+  transform: rotateY(-90deg);
+}
+.block3d .b-left {
+  left: 0;
+  background: linear-gradient(to right, color-mix(in oklab, var(--c) 22%, var(--color-ink-0)), color-mix(in oklab, var(--c) 40%, var(--color-ink-1)));
+}
+.block3d .b-right {
+  left: 100%;
+  background: color-mix(in oklab, var(--c) 16%, var(--color-ink-0));
+}
+.block3d .b-shadow {
+  left: -4px;
+  top: 2px;
+  width: calc(100% + 14px);
+  height: calc(100% + 12px);
+  transform: translateZ(0.5px);
+  border-radius: 12px;
+  background: var(--shadow);
+  filter: blur(9px);
+}
+.block3d .b-ring {
+  left: -8px;
+  top: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  transform: translateZ(1px);
+  border-radius: 14px;
+  border: 1.5px dashed transparent;
+}
+.block3d .b-kind {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--c) 80%, var(--color-text));
+  line-height: 12px;
+}
+.block3d .b-label {
+  font-size: 13px;
+  font-weight: 620;
+  font-stretch: 87.5%;
+  color: var(--color-text);
+  line-height: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 10px;
+}
+.block3d .b-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-dim);
+  line-height: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.block3d .b-badge {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: none;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-ink-0);
+}
+
+.block3d:hover .b-top,
+.block3d:focus-visible .b-top {
+  border-color: var(--c);
+}
+.block3d:focus-visible .b-top {
+  outline: 2px solid var(--color-frontend);
+  outline-offset: 2px;
+}
+.block3d.selected .b-top {
+  border-color: var(--c);
+  background: color-mix(in oklab, var(--c) 24%, var(--color-ink-2));
+  box-shadow: 0 0 0 1px var(--c), 0 0 26px color-mix(in oklab, var(--c) 55%, transparent);
+}
+.block3d.match .b-top {
+  outline: 1.5px solid var(--color-text);
+  outline-offset: 2px;
+}
+.block3d.dim .b-face,
+.block3d.dim .b-shadow {
+  opacity: 0.16;
+}
+.block3d.faded .b-face,
+.block3d.faded .b-shadow {
+  opacity: 0.5;
+}
+.block3d.broken .b-top {
+  border: 1.5px dashed var(--color-broken);
+  background: color-mix(in oklab, var(--color-broken) 12%, var(--color-ink-2));
+}
+.block3d.mark-new .b-ring { border-color: var(--color-new); }
+.block3d.mark-modified .b-ring { border-color: var(--color-modified); }
+.block3d.mark-removed .b-ring { border-color: var(--color-removed); }
+.block3d.mark-new .b-badge,
+.block3d.mark-modified .b-badge,
+.block3d.mark-removed .b-badge {
+  display: grid;
+}
+.block3d.mark-new .b-badge { background: var(--color-new); }
+.block3d.mark-modified .b-badge { background: var(--color-modified); }
+.block3d.mark-removed .b-badge { background: var(--color-removed); }
+.block3d.leaving {
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: light) {
+  .scene3d {
+    --shadow: rgb(20 30 40 / 0.22);
+  }
+}
+
+/* ── sequence view ─────────────────────────────────────────────────────── */
+.sequence {
+  --edge: color-mix(in oklab, var(--color-text) 22%, transparent);
+  --edge-hot: color-mix(in oklab, var(--color-text) 80%, transparent);
+}
+.seq-lifeline {
+  stroke: var(--color-rule);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+.seq-lifeline.on {
+  stroke: var(--color-rule-strong);
+  stroke-dasharray: none;
+}
+.seq-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.seq-step:hover .seq-hit {
+  fill: color-mix(in oklab, var(--color-text) 4%, transparent);
+}
+.seq-line {
+  stroke: var(--edge);
+  stroke-width: 1.25;
+}
+.seq-step.hot .seq-line {
+  stroke: var(--edge-hot);
+  stroke-width: 1.75;
+}
+.seq-step.http .seq-line,
+.seq-step.role-transfer .seq-line {
+  stroke-dasharray: 5 4;
+}
+.seq-step.data .seq-line,
+.seq-step.role-read .seq-line {
+  stroke: color-mix(in oklab, var(--color-data) 60%, transparent);
+}
+.seq-step.role-write .seq-line,
+.seq-step.role-readwrite .seq-line {
+  stroke: color-mix(in oklab, var(--color-service) 72%, transparent);
+}
+.seq-step.collapsed {
+  opacity: 0.55;
+}
+.seq-order,
+.seq-site,
+.seq-verb,
+.seq-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.seq-order {
+  fill: var(--color-faint);
+}
+.seq-site {
+  fill: var(--color-dim);
+}
+.seq-site.muted {
+  fill: var(--color-faint);
+}
+.seq-site-link {
+  cursor: pointer;
+}
+.seq-site-link:hover .seq-site,
+.seq-site-link:focus-visible .seq-site {
+  fill: var(--color-text);
+  text-decoration: underline;
+}
+.seq-verb {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  fill: var(--color-faint);
+}
+.seq-step.hot .seq-verb {
+  fill: var(--color-dim);
+}
+.seq-note {
+  fill: var(--color-faint);
+}

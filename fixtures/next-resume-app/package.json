@@ -1,0 +1,12 @@
+{
+  "name": "next-resume-app",
+  "private": true,
+  "description": "Fixture app used by Eyrie tests and demos. Never installed or run.",
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "next": "^16.0.0",
+    "openai": "^5.0.0",
+    "react": "^19.0.0",
+    "stripe": "^18.0.0"
+  }
+}

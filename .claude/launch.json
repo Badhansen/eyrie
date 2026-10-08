@@ -1,0 +1,40 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eyrie-fixture",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "packages/server/src/cli.ts",
+        "fixtures/next-resume-app",
+        "--port",
+        "4319",
+        "--no-open",
+        "--token",
+        "demo"
+      ],
+      "port": 4319
+    },
+    {
+      "name": "engine-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@eyrie/server",
+        "dev"
+      ],
+      "port": 4319
+    },
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@eyrie/web",
+        "dev"
+      ],
+      "port": 5173
+    }
+  ]
+}

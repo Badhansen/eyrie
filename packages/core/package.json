@@ -1,0 +1,10 @@
+{
+  "name": "@eyrie/core",
+  "version": "0.1.0",
+  "description": "Shared graph types, stable IDs and diff utilities for Eyrie",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

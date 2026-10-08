@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.eyrie/
+*.log
+.DS_Store
+coverage/
+.vite/
+.playwright-mcp/

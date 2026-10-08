@@ -1,0 +1,26 @@
+{
+  "name": "@eyrie/server",
+  "version": "0.1.0",
+  "description": "Eyrie CLI and local HTTP/WebSocket server",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "bin": {
+    "eyrie": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/cli.ts ../../fixtures/next-resume-app --port 4319 --token dev --no-open"
+  },
+  "dependencies": {
+    "@eyrie/architecture": "workspace:*",
+    "@eyrie/core": "workspace:*",
+    "@eyrie/engine": "workspace:*",
+    "@eyrie/graph": "workspace:*",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
+  }
+}

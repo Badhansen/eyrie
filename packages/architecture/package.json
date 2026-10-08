@@ -1,0 +1,17 @@
+{
+  "name": "@eyrie/architecture",
+  "version": "0.1.0",
+  "description": "Derives a small, human-readable architecture graph from the code graph",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/core": "workspace:*",
+    "@eyrie/graph": "workspace:*"
+  },
+  "devDependencies": {
+    "@eyrie/parser": "workspace:*"
+  }
+}

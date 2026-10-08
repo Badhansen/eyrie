@@ -1,0 +1,26 @@
+{
+  "name": "eyrie-monorepo",
+  "private": true,
+  "description": "Local-first live architecture graph for codebases",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @eyrie/server --filter @eyrie/web dev",
+    "build": "pnpm --filter @eyrie/web build",
+    "start": "pnpm build && tsx packages/server/src/cli.ts",
+    "eyrie": "tsx packages/server/src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @eyrie/web typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.3"
+  }
+}

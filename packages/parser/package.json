@@ -1,0 +1,16 @@
+{
+  "name": "@eyrie/parser",
+  "version": "0.1.0",
+  "description": "Tree-sitter based fact extraction for Eyrie",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/core": "workspace:*",
+    "tree-sitter-javascript": "0.25.0",
+    "tree-sitter-typescript": "0.23.2",
+    "web-tree-sitter": "0.27.0"
+  }
+}

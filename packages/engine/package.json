@@ -1,0 +1,20 @@
+{
+  "name": "@eyrie/engine",
+  "version": "0.1.0",
+  "description": "Scans, watches and incrementally indexes a repository",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/architecture": "workspace:*",
+    "@eyrie/core": "workspace:*",
+    "@eyrie/graph": "workspace:*",
+    "@eyrie/parser": "workspace:*",
+    "@eyrie/storage": "workspace:*",
+    "chokidar": "5.0.0",
+    "ignore": "7.0.12",
+    "json5": "2.2.3"
+  }
+}

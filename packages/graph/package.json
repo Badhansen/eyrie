@@ -1,0 +1,18 @@
+{
+  "name": "@eyrie/graph",
+  "version": "0.1.0",
+  "description": "Code knowledge graph: module resolution, relationship resolution, incremental updates and queries",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/core": "workspace:*",
+    "graphology": "0.26.0",
+    "graphology-types": "^0.24.8"
+  },
+  "devDependencies": {
+    "@eyrie/parser": "workspace:*"
+  }
+}

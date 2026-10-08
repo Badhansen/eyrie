@@ -1,0 +1,13 @@
+{
+  "name": "@eyrie/storage",
+  "version": "0.1.0",
+  "description": "SQLite persistence for Eyrie facts, nodes and edges",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/core": "workspace:*"
+  }
+}

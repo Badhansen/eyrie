@@ -1,0 +1,34 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  resumes      Resume[]
+  subscription Subscription?
+}
+
+model Resume {
+  id       String          @id @default(cuid())
+  userId   String
+  title    String
+  content  Json
+  user     User            @relation(fields: [userId], references: [id])
+  versions ResumeVersion[]
+}
+
+model ResumeVersion {
+  id       String @id @default(cuid())
+  resumeId String
+  content  Json
+  resume   Resume @relation(fields: [resumeId], references: [id])
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  status String
+  user   User   @relation(fields: [userId], references: [id])
+}

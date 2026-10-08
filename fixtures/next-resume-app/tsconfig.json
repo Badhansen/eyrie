@@ -1,0 +1,11 @@
+{
+  // Fixture tsconfig with comments, like real Next.js projects.
+  "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+    },
+  },
+}
