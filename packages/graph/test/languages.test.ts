@@ -205,6 +205,62 @@ describe('Rust', () => {
 });
 
 describe('incremental updates across languages', () => {
+  it('refreshes Go callers when receiver methods are added or removed in another package file', async () => {
+    const config = { ...emptyProjectConfig(), goModules: [{ dir: '', path: 'example' }] };
+    const files = {
+      'svc/type.go': `package svc\ntype Service struct {}\nfunc NewService() *Service { return &Service{} }\n`,
+      'svc/method.go': `package svc\n`,
+      'api/main.go': `package api\nimport "example/svc"\nfunc Run() { s := svc.NewService(); s.Work() }\n`,
+    };
+    const index = await build(files, config);
+    const { SourceParser } = await import('@eyrie/parser');
+    const parser = new SourceParser();
+    try {
+      const method = `package svc\nfunc (s *Service) Work() {}\n`;
+      const change = index.update([{ path: 'svc/method.go', facts: await parser.parse('svc/method.go', method) }]);
+      expect(change.reresolved).toContain('api/main.go');
+      expect(edges(index)).toEqual(edges(await build({ ...files, 'svc/method.go': method }, config)));
+      expect(edges(index)).toContain('CALLS api/main.go#Run -> svc/method.go#Service.Work');
+      index.update([{ path: 'svc/method.go', facts: null }]);
+      const { ['svc/method.go']: _removed, ...remaining } = files;
+      expect(edges(index)).toEqual(edges(await build(remaining, config)));
+      index.update([{ path: 'svc/method.go', facts: await parser.parse('svc/method.go', method) }]);
+      expect(edges(index)).toContain('CALLS api/main.go#Run -> svc/method.go#Service.Work');
+      index.update([{ path: 'svc/method.go', facts: await parser.parse('svc/method.go', files['svc/method.go']) }]);
+      expect(edges(index)).toEqual(edges(await build(files, config)));
+    } finally { parser.dispose(); }
+  });
+
+  it('composes imported FastAPI router mounts and updates prefixes without a full reindex', async () => {
+    const main = (prefix: string) => `from fastapi import FastAPI\nfrom app.routes import router as orders\napp = FastAPI()\napp.include_router(orders, prefix="${prefix}")\n`;
+    const files = {
+      'app/main.py': main('/v1'),
+      'app/routes.py': `from fastapi import APIRouter\nrouter = APIRouter(prefix="/orders")\n@router.get("/{id}")\ndef detail(id: int): return id\n`,
+    };
+    const index = await build(files);
+    const routeNames = () => [...index.store.nodes()].filter((n) => n.kind === 'api_route').map((n) => n.name).sort();
+    expect(routeNames()).toEqual(['GET /v1/orders/:id']);
+    expect(edges(index)).toContain('CALLS api_route:GET /v1/orders/:id -> app/routes.py#detail');
+    const { SourceParser } = await import('@eyrie/parser');
+    const parser = new SourceParser();
+    try {
+      index.update([{ path: 'app/main.py', facts: await parser.parse('app/main.py', main('/v2')) }]);
+      expect(routeNames()).toEqual(['GET /v2/orders/:id']);
+      expect(edges(index)).toEqual(edges(await build({ ...files, 'app/main.py': main('/v2') })));
+      index.update([{ path: 'app/main.py', facts: null }]);
+      expect(routeNames()).toEqual(['GET /orders/:id']);
+    } finally { parser.dispose(); }
+  });
+
+  it('supports nested and multiple mounts of the same Python router', async () => {
+    const index = await build({
+      'app/main.py': `from fastapi import FastAPI\nfrom app.api import api\napp = FastAPI()\napp.include_router(api, prefix="/v1")\napp.include_router(api, prefix="/v2")\n`,
+      'app/api.py': `from fastapi import APIRouter\nfrom app.routes import router\napi = APIRouter(prefix="/api")\napi.include_router(router=router, prefix="/shop")\n`,
+      'app/routes.py': `from fastapi import APIRouter\nrouter = APIRouter(prefix="/orders")\n@router.get("/{id}")\ndef detail(id: int): return id\n`,
+    });
+    expect([...index.store.nodes()].filter((n) => n.kind === 'api_route').map((n) => n.name).sort()).toEqual(['GET /v1/api/shop/orders/:id', 'GET /v2/api/shop/orders/:id']);
+  });
+
   it('links a Go call once the callee appears in another file of the package', async () => {
     const index = await build({ 'svc/a.go': `package svc\n\nfunc Run() { helper() }\n` });
     expect(edges(index)).not.toContain('CALLS svc/a.go#Run -> svc/b.go#helper');

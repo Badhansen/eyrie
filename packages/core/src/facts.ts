@@ -51,6 +51,8 @@ export interface FileFacts {
   references: ReferenceFact[];
   /** Express/Hono/Fastify-style route registrations found in the file. */
   routes: RouteFact[];
+  /** Python router composition, resolved across imports by the graph index. */
+  routeMounts?: { router: string; target: string[]; prefix: string; line: number }[];
   /** Data models declared by schema files. */
   models?: ModelFact[];
   parseErrors: number;

@@ -517,6 +517,13 @@ export class PythonExtractor extends BaseExtractor {
     const args = node.childForFieldName('arguments');
     if (!fn) return;
     const c = chain(fn);
+    if (c?.length === 2 && c[1] === 'include_router') {
+      const targetNode = args?.namedChildren.find((a) => a && a.type !== 'comment' && (a.type !== 'keyword_argument' || a.childForFieldName('name')?.text === 'router'));
+      const target = targetNode ? chain(targetNode.type === 'keyword_argument' ? targetNode.childForFieldName('value') : targetNode) : null;
+      const prefix = this.keywordString(node, ['prefix']);
+      const dynamicPrefix = args?.namedChildren.some((a) => a?.type === 'keyword_argument' && a.childForFieldName('name')?.text === 'prefix') && prefix === undefined;
+      if (target && !dynamicPrefix) (this.facts.routeMounts ??= []).push({ router: c[0]!, target, prefix: joinRoute(this.routerPrefix.get(c[0]!), prefix ?? ''), line: line(node) });
+    }
     // A bare `super()` only matters through the member it reaches (`super().save()`).
     if (c && c.length === 1 && c[0] === 'super') return;
     if (c) {
