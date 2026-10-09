@@ -12,11 +12,12 @@ import {
   type CodeNodeKind,
   type FileFacts,
   type ImportSpecifier,
+  type ModelFact,
   type ReferenceFact,
   type SymbolFact,
 } from '@eyrie/core';
 import { packageName, providerForPackage, providerForUrl, type ExternalProvider } from './externals.js';
-import { ModuleResolver, emptyProjectConfig, type ProjectConfig } from './resolver.js';
+import { ModuleResolver, emptyProjectConfig, languageOfPath, type ProjectConfig } from './resolver.js';
 import { HTTP_EXPORTS, matchRoutePath, nextFileInfo, normalizeUrlPath, type NextFileInfo } from './routes.js';
 import { CodeGraphStore } from './store.js';
 
@@ -38,6 +39,8 @@ export interface UpdateResult {
 type Target =
   | { kind: 'symbol'; file: string; symbol: SymbolFact }
   | { kind: 'module'; file: string }
+  /** A package spread over several files (Go package, Java / C# namespace). */
+  | { kind: 'package'; files: string[] }
   | { kind: 'external'; provider: ExternalProvider };
 
 interface Resolved {
@@ -70,13 +73,18 @@ interface RouteDesc {
 
 const PRISMA_READ = new Set(['findMany', 'findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'count', 'aggregate', 'groupBy']);
 const PRISMA_WRITE = new Set(['create', 'createMany', 'createManyAndReturn', 'update', 'updateMany', 'updateManyAndReturn', 'upsert', 'delete', 'deleteMany']);
-const MODEL_WRITE = /^(create|insert|update|upsert|delete|remove|save|destroy|bulk|replace)/i;
-const MODEL_READ = /^(find|get|select|count|aggregate|exists|where|query|list|read|search|populate|distinct)/i;
+const MODEL_WRITE = /^(create|insert|update|upsert|delete|remove|save|destroy|bulk|replace|add|attach|persist|merge)/i;
+const MODEL_READ = /^(find|get|select|count|aggregate|exists|where|query|list|read|search|populate|distinct|filter|all$|first|last|exclude|pluck|take|fetch|load)/i;
 const FETCH_FUNCS = new Set(['fetch', '$fetch', 'ofetch', 'useSWR', 'useFetch', 'useSWRMutation']);
 const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self']);
 const HTTP_CLIENTS = new Set(['axios', 'ky', 'got', 'superagent']);
 const HTTP_FACTORIES = new Set(['axios.create', 'ky.create', 'ky.extend', 'got.extend']);
 const HTTP_VERBS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options']);
+/** `get`, `Post`, `GetAsync`, `postForObject`, `get_json`... → the HTTP verb. */
+const FOREIGN_HTTP_VERB = /^(get|post|put|patch|delete|head|options)(Async|ForObject|ForEntity|_json)?$/i;
+const FOREIGN_HTTP_MODULES = new Set(['requests', 'httpx', 'aiohttp', 'urllib3', 'net/http', 'Illuminate.Support.Facades.Http', 'reqwest']);
+const FOREIGN_HTTP_GLOBALS = new Set(['HTTParty', 'Faraday', 'RestClient', 'Net.HTTP', 'reqwest']);
+const FOREIGN_HTTP_TYPES = new Set(['HttpClient', 'RestTemplate', 'WebClient', 'RestClient', 'AsyncClient', 'httpx.Client', 'requests.Session', 'reqwest.Client', 'Faraday.Connection', 'http.Client']);
 const TABLE_FACTORIES: Record<string, RegExp> = {
   pgTable: /^drizzle-orm/,
   mysqlTable: /^drizzle-orm/,
@@ -117,6 +125,18 @@ function symbolIndex(facts: FileFacts): Map<string, SymbolFact> {
   return idx;
 }
 
+/** `Stripe` for `stripe`, `Aws` for `aws-sdk-s3`, `OpenAI` for `OpenAI.Chat`: the name is the package's own. */
+function namesPackage(name: string, source: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const first = source.split(/[./\\:]+/)[0] ?? source;
+  return name.length >= 3 && norm(first).startsWith(norm(name));
+}
+
+/** The ORM model a class (or EF Core DbSet property) declares, if any. */
+function modelOf(facts: FileFacts | undefined, qualifiedName: string): ModelFact | undefined {
+  return facts?.models?.find((m) => m.symbol === qualifiedName);
+}
+
 const importIndexes = new WeakMap<FileFacts, Map<string, { source: string; spec: ImportSpecifier; typeOnly: boolean }>>();
 function importBinding(facts: FileFacts, local: string) {
   let idx = importIndexes.get(facts);
@@ -129,6 +149,18 @@ function importBinding(facts: FileFacts, local: string) {
   }
   return idx.get(local);
 }
+
+/**
+ * Namespace and top-level names of a non-JS file: what the resolver indexes
+ * and what same-package files can use without an import.
+ */
+function declarationKey(facts: FileFacts | undefined): string {
+  if (!facts || languageOfPath(facts.path) === 'js') return '';
+  const names = facts.symbols.filter((s) => !s.parent).map((s) => s.name);
+  return `${facts.namespace ?? ''}|${[...new Set(names)].sort().join(',')}`;
+}
+
+const declaredNames = (key: string): string[] => (key ? key.slice(key.indexOf('|') + 1).split(',').filter(Boolean) : []);
 
 /** Everything other files can observe about this file's exports. */
 export function exportSignature(facts: FileFacts): string {
@@ -185,7 +217,7 @@ export class GraphIndex {
     this.repoName = opts.repoName;
     this.repoId = idFor(keys.repository(opts.repoName));
     this.config = opts.config ?? emptyProjectConfig();
-    this.resolver = new ModuleResolver(this.fileSet, this.config);
+    this.resolver = new ModuleResolver(this.fileSet, this.config, (p) => this.facts.get(p));
     this.store.upsertNode({ id: this.repoId, key: keys.repository(opts.repoName), kind: 'repository', name: opts.repoName, qualifiedName: opts.repoName });
     this.store.commit();
   }
@@ -231,6 +263,7 @@ export class GraphIndex {
     this.exportCache.clear();
     const changed = new Set<string>();
     const affected = new Set<string>();
+    const declaredChanged = new Set<string>();
     let structureChanged = false;
     const oldRouteSig = this.routeSignature();
     const oldModelSig = this.modelSignature();
@@ -239,6 +272,14 @@ export class GraphIndex {
       changed.add(path);
       const had = this.facts.has(path);
       const oldSig = this.exportSigs.get(path);
+      // Namespaces and type names feed the resolver's indexes (Java / C# / PHP / Ruby imports),
+      // and same-package or autoloaded names are used without an import we could watch.
+      const oldDecl = declarationKey(this.facts.get(path));
+      const newDecl = declarationKey(facts ?? undefined);
+      if (oldDecl !== newDecl) {
+        structureChanged = true;
+        for (const name of [...declaredNames(oldDecl), ...declaredNames(newDecl)]) declaredChanged.add(name);
+      }
       if (facts) {
         this.facts.set(path, facts);
         if (!had) {
@@ -260,6 +301,7 @@ export class GraphIndex {
     if (structureChanged) {
       this.resolver.invalidate();
       for (const f of this.unresolvedLocal) affected.add(f);
+      if (declaredChanged.size && !opts.all) for (const f of this.filesMentioning(declaredChanged)) affected.add(f);
       const roots = this.computeAppRoots();
       if (roots.size !== this.appRoots.size || [...roots].some((r) => !this.appRoots.has(r))) {
         this.appRoots = roots;
@@ -278,6 +320,23 @@ export class GraphIndex {
     this.collectGarbage();
 
     return { diff: this.store.commit(), changed: [...changed], reresolved: [...targets], ms: performance.now() - t0 };
+  }
+
+  /** Non-JS files whose references or type annotations start with one of `names`. */
+  private filesMentioning(names: Set<string>): string[] {
+    const out: string[] = [];
+    for (const [path, facts] of this.facts) {
+      if (languageOfPath(path) === 'js') continue;
+      const hit =
+        facts.references.some((r) => names.has(strip(r.callee[0]!))) ||
+        facts.symbols.some((s) =>
+          [...(s.extends ?? []), ...(s.implements ?? []), s.typeName, s.instanceOf, ...(s.fields ?? []).map((f) => f.type ?? f.instanceOf), ...Object.values(s.locals ?? {})].some(
+            (t) => !!t && names.has(t.split('.')[0]!),
+          ),
+        );
+      if (hit) out.push(path);
+    }
+    return out;
   }
 
   // ── nodes ────────────────────────────────────────────────────────────────
@@ -309,7 +368,7 @@ export class GraphIndex {
   private buildNodes(facts: FileFacts): CodeNode[] {
     const path = facts.path;
     const next = nextFileInfo(path, this.appRoots);
-    const packages = [...new Set(facts.imports.filter((i) => isBare(i.source)).map((i) => packageName(i.source)))].sort();
+    const packages = [...new Set(facts.imports.map((i) => this.packageOf(path, i.source)).filter((p): p is string => !!p))].sort();
     const fileMeta: Record<string, unknown> = { language: facts.language, loc: facts.loc };
     if (facts.directives.length) fileMeta.directives = facts.directives;
     if (facts.parseErrors) fileMeta.parseErrors = facts.parseErrors;
@@ -385,7 +444,7 @@ export class GraphIndex {
       addRoute(
         { method: r.method, path: r.path, appRoot: this.appRootOf(path), line: r.line, handlers: r.handlers, scope: r.scope },
         `${keys.route(r.method, r.path)}@${path}`,
-        'express',
+        r.framework ?? 'express',
       );
     }
     this.fileRoutes.set(path, routes);
@@ -403,6 +462,13 @@ export class GraphIndex {
       });
     }
     return nodes;
+  }
+
+  /** Third-party package an import names, or null for local and relative imports. */
+  private packageOf(file: string, source: string): string | null {
+    if (languageOfPath(file) === 'js') return isBare(source) ? packageName(source) : null;
+    const res = this.resolver.resolve(file, source);
+    return res.kind === 'package' ? res.name : null;
   }
 
   private tableName(facts: FileFacts, s: SymbolFact): string | null {
@@ -560,11 +626,10 @@ export class GraphIndex {
       for (const h of r.handlers) {
         const [head, ...rest] = h.split('.');
         const own = idx.get(head!);
+        const byName: Target | null = own ? { kind: 'symbol', file: path, symbol: own } : this.resolveName(ctx, path, [head!]);
         // `export { GET } from '...'` has no local symbol; resolve it as an export.
-        const t: Target | null = own
-          ? { kind: 'symbol', file: path, symbol: own }
-          : (this.resolveName(ctx, path, [head!]) ?? this.resolveExport(ctx, path, h));
-        const res = t ? this.resolveMember(ctx, t, own || importBinding(facts, head!) ? rest : [], undefined, 1) : null;
+        const t = byName ?? this.resolveExport(ctx, path, h);
+        const res = t ? this.resolveMember(ctx, t, byName ? rest : [], undefined, 1) : null;
         if (res) this.addEdge(ctx, 'CALLS', r.id, res.target, r.line, res.confidence);
       }
     }
@@ -592,14 +657,32 @@ export class GraphIndex {
       if (e.kind === 'local') continue;
       sources.push({ source: e.source, line: e.line, typeOnly: false, names: [e.kind === 'reexport' ? e.imported : '*'], sideEffect: false });
     }
+    const importFile = (target: string, imp: (typeof sources)[number], names: string[]) => {
+      ctx.consulted.add(target);
+      const meta: Record<string, unknown> = { names };
+      if (imp.typeOnly) meta.typeOnly = true;
+      if (imp.dynamic) meta.dynamic = true;
+      this.addEdge(ctx, 'IMPORTS', fid, fileId(target), imp.line, 1, meta);
+    };
     for (const imp of sources) {
       const res = this.resolver.resolve(path, imp.source);
+      // `from pkg import sub` / `use crate::a::sub`: a name may itself be a module.
+      const children: string[] = [];
+      for (const name of imp.names) {
+        const spec = this.resolver.childSpecifier(path, imp.source, name);
+        const child = spec ? this.resolver.resolve(path, spec) : null;
+        if (child?.kind === 'file' && (res.kind !== 'file' || child.path !== res.path)) {
+          importFile(child.path, imp, [name]);
+          children.push(name);
+        }
+      }
       if (res.kind === 'file') {
-        ctx.consulted.add(res.path);
-        const meta: Record<string, unknown> = { names: imp.names };
-        if (imp.typeOnly) meta.typeOnly = true;
-        if (imp.dynamic) meta.dynamic = true;
-        this.addEdge(ctx, 'IMPORTS', fid, fileId(res.path), imp.line, 1, meta);
+        const names = imp.names.filter((n) => !children.includes(n));
+        if (names.length || imp.sideEffect || !children.length) importFile(res.path, imp, names);
+      } else if (res.kind === 'files') {
+        for (const f of this.packageFiles(ctx, res.paths, imp.source)) importFile(f, imp, imp.names);
+      } else if (children.length) {
+        continue;
       } else if (res.kind === 'unresolved' && res.local) {
         this.unresolvedLocal.add(path);
       } else if (res.kind === 'package' && !imp.typeOnly) {
@@ -607,6 +690,44 @@ export class GraphIndex {
         if (p) this.addEdge(ctx, 'USES', fid, this.externalNode(p), imp.line, 0.6, { via: 'import' });
       }
     }
+  }
+
+  /**
+   * Files of a multi-file package an import actually depends on: the ones
+   * declaring names this file uses from it. Falls back to every file when
+   * nothing more specific is known.
+   */
+  private packageFiles(ctx: Ctx, paths: string[], source: string): string[] {
+    const wanted = new Set<string>();
+    // Names bound to this import (`order` in Go) and whether it is a wildcard (`using A.B;`).
+    const bound = new Set<string>();
+    let wildcard = false;
+    for (const imp of ctx.facts.imports) {
+      if (imp.source !== source) continue;
+      if (imp.wildcard) wildcard = true;
+      for (const s of imp.specifiers) {
+        if (s.imported === '*') bound.add(s.local);
+        else wanted.add(s.imported);
+      }
+    }
+    const use = (chain: string[]) => {
+      const [first, second] = chain;
+      if (bound.has(first!) && second) wanted.add(second);
+      else if (wildcard && /^[A-Z]/.test(first!)) wanted.add(first!);
+    };
+    for (const ref of ctx.facts.references) use(ref.callee.map(strip));
+    for (const s of ctx.facts.symbols) {
+      const types = [...(s.extends ?? []), ...(s.implements ?? []), s.typeName, s.instanceOf, ...(s.fields ?? []).map((f) => f.type ?? f.instanceOf), ...Object.values(s.locals ?? {})];
+      for (const t of types) if (t && !t.startsWith('call:')) use(t.split('.'));
+    }
+    const hits = paths.filter((f) => {
+      const facts = this.facts.get(f);
+      return !!facts && facts.symbols.some((s) => !s.parent && wanted.has(s.name));
+    });
+    // A wildcard import nothing is used from is noise (`using Acme.Shared;` out of habit),
+    // but a named package import is a real dependency even when we cannot see what it uses.
+    if (hits.length || wildcard) return hits;
+    return paths.length <= 3 ? paths : paths.slice(0, 1);
   }
 
   private heritageEdges(ctx: Ctx): void {
@@ -695,6 +816,14 @@ export class GraphIndex {
     const ownerName = enclosing?.kind === 'class' ? enclosing.qualifiedName : enclosing?.parent;
     let owner = ownerName ? idx.get(ownerName) : undefined;
     let file = ctx.path;
+    if (!owner && ownerName && languageOfPath(ctx.path) !== 'js') {
+      // Go methods can live in a different file from their struct.
+      const t = this.resolveName(ctx, ctx.path, [ownerName]);
+      if (t?.kind === 'symbol') {
+        owner = t.symbol;
+        file = t.file;
+      }
+    }
     if (!owner) return null;
     const chain = ref.callee;
     if (isSuper) {
@@ -733,12 +862,58 @@ export class GraphIndex {
     else {
       const b = importBinding(facts, name);
       if (b) t = this.resolveImport(ctx, file, b.source, b.spec.imported);
+      else if (languageOfPath(file) !== 'js') t = this.resolveImplicit(ctx, file, facts, name);
     }
     for (const part of chain.slice(1)) {
-      if (t?.kind !== 'module') break;
-      t = this.resolveExport(ctx, t.file, strip(part));
+      if (t?.kind === 'package') t = this.packageExport(ctx, t.files, strip(part));
+      else if (t?.kind === 'module') t = this.resolveExport(ctx, t.file, strip(part));
+      else break;
     }
     return t;
+  }
+
+  /**
+   * Names visible without a binding import: wildcard imports, other files
+   * of the same Go package / Java or C# namespace, and repo-wide type
+   * names (Rails autoloading, PHP / C# / Java fallback).
+   */
+  private resolveImplicit(ctx: Ctx, file: string, facts: FileFacts, name: string): Target | null {
+    for (const imp of facts.imports) {
+      if (!imp.wildcard) continue;
+      const t = this.resolveImport(ctx, file, imp.source, name);
+      if (!t || t.kind === 'module') continue;
+      // `using Stripe;` cannot tell us which names are Stripe's; only trust `Stripe.X` itself.
+      if (t.kind === 'external' && !namesPackage(name, imp.source)) continue;
+      return t;
+    }
+    for (const mate of this.resolver.matesOf(file)) {
+      const s = this.facts.get(mate) && symbolIndex(this.facts.get(mate)!).get(name);
+      if (s && !s.parent) {
+        ctx.consulted.add(mate);
+        return { kind: 'symbol', file: mate, symbol: s };
+      }
+    }
+    if (/^[A-Z]/.test(name)) {
+      const files = this.resolver.globalType(file, name);
+      // Only an unambiguous name; two `OrderService` classes would be a guess.
+      if (files.length === 1) {
+        const s = symbolIndex(this.facts.get(files[0]!)!).get(name);
+        if (s) {
+          ctx.consulted.add(files[0]!);
+          return { kind: 'symbol', file: files[0]!, symbol: s };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** `name` exported by any file of a multi-file package. */
+  private packageExport(ctx: Ctx, files: string[], name: string): Target | null {
+    for (const f of files) {
+      const t = this.resolveExport(ctx, f, name);
+      if (t) return t;
+    }
+    return null;
   }
 
   private resolveImport(ctx: Ctx, file: string, source: string, imported: string): Target | null {
@@ -747,7 +922,16 @@ export class GraphIndex {
       const p = providerForPackage(res.name);
       return p ? { kind: 'external', provider: p } : null;
     }
-    if (res.kind !== 'file') return null;
+    if (res.kind === 'files') {
+      for (const f of res.paths) if (f !== ctx.path) ctx.consulted.add(f);
+      return imported === '*' ? { kind: 'package', files: res.paths } : this.packageExport(ctx, res.paths, imported);
+    }
+    if (res.kind !== 'file') {
+      // `from . import models` where the package has no __init__.py.
+      const spec = this.resolver.childSpecifier(file, source, imported);
+      const child = spec ? this.resolver.resolve(file, spec) : null;
+      return child?.kind === 'file' ? { kind: 'module', file: child.path } : null;
+    }
     if (res.path !== ctx.path) ctx.consulted.add(res.path);
     if (imported === '*') return { kind: 'module', file: res.path };
     return this.resolveExport(ctx, res.path, imported) ?? (imported === 'default' ? { kind: 'module', file: res.path } : null);
@@ -797,6 +981,33 @@ export class GraphIndex {
         if (t) return t;
       }
     }
+    if (languageOfPath(file) !== 'js') return this.implicitExport(ctx, file, facts, name);
+    return null;
+  }
+
+  /**
+   * Languages without export statements: every top-level name is visible
+   * (`Strings.trim` reaches a static method), names a module imported are
+   * re-exported (Python `__init__.py`), and a missing name may be a
+   * submodule (`pkg.sub`).
+   */
+  private implicitExport(ctx: Ctx, file: string, facts: FileFacts, name: string): Target | null {
+    const s = symbolIndex(facts).get(name);
+    if (s) return { kind: 'symbol', file, symbol: s };
+    const b = importBinding(facts, name);
+    if (b) return this.resolveImport(ctx, file, b.source, b.spec.imported);
+    if (languageOfPath(file) === 'python') {
+      for (const imp of facts.imports) {
+        if (!imp.wildcard) continue;
+        const t = this.resolveImport(ctx, file, imp.source, name);
+        if (t) return t;
+      }
+    }
+    const child = this.resolver.childModule(file, name);
+    if (child) {
+      ctx.consulted.add(child);
+      return { kind: 'module', file: child };
+    }
     return null;
   }
 
@@ -808,6 +1019,15 @@ export class GraphIndex {
     const m = idx.get(`${owner}.${member}`);
     if (m) return { file, symbol: m };
     if (depth >= 5) return null;
+    // Go methods attach to a type from any file of its package.
+    const mates = languageOfPath(file) === 'go' ? this.resolver.matesOf(file) : [];
+    for (const mate of mates) {
+      const mm = symbolIndex(this.facts.get(mate)!).get(`${owner}.${member}`);
+      if (mm) {
+        ctx.consulted.add(mate);
+        return { file: mate, symbol: mm };
+      }
+    }
     for (const base of idx.get(owner)?.extends ?? []) {
       const t = this.resolveName(ctx, file, base.split('.'));
       if (t?.kind === 'symbol') {
@@ -822,6 +1042,11 @@ export class GraphIndex {
     switch (t.kind) {
       case 'external':
         return this.memberOfExternal(ctx, t.provider, rest, ref);
+      case 'package': {
+        const e = rest.length ? this.packageExport(ctx, t.files, strip(rest[0]!)) : null;
+        if (e) return this.resolveMember(ctx, e, rest.slice(1), ref, conf);
+        return t.files.length === 1 ? { target: fileId(t.files[0]!), confidence: conf * 0.5 } : null;
+      }
       case 'module': {
         if (rest.length === 0) return { target: fileId(t.file), confidence: conf * 0.9 };
         const e = this.resolveExport(ctx, t.file, strip(rest[0]!));
@@ -837,12 +1062,29 @@ export class GraphIndex {
 
   private memberOfSymbol(ctx: Ctx, file: string, s: SymbolFact, rest: string[], ref: ReferenceFact | undefined, conf: number): Resolved | null {
     const sid = symbolId(file, s);
-    if (rest.length === 0) return { target: sid, confidence: conf };
+    if (rest.length === 0) {
+      // `select(User)`, `new Order()`: code naming an ORM entity uses its model.
+      const model = ref && s.kind === 'class' ? modelOf(this.facts.get(file), s.qualifiedName) : undefined;
+      if (model) return { target: this.modelNode(ctx, model.name, model.orm), confidence: conf * 0.8 };
+      return { target: sid, confidence: conf };
+    }
     const member = strip(rest[0]!);
     const facts = this.facts.get(file)!;
+    if (s.kind === 'interface') {
+      // Java / C# / Go / Rust interfaces declare their methods; TypeScript ones carry no member symbols.
+      const m = this.findMethod(ctx, file, s.qualifiedName, member);
+      return { target: m ? symbolId(m.file, m.symbol) : sid, confidence: conf };
+    }
     if (s.kind === 'class') {
       const m = this.findMethod(ctx, file, s.qualifiedName, member);
-      return m ? { target: symbolId(m.file, m.symbol), confidence: conf } : { target: sid, confidence: conf * 0.7 };
+      // `db.Orders.Add(o)`: an EF Core DbSet property stands for its model.
+      const viaProperty = m && modelOf(this.facts.get(m.file), m.symbol.qualifiedName);
+      if (viaProperty) return this.modelAccess(ctx, viaProperty, rest.slice(1), conf);
+      if (m) return { target: symbolId(m.file, m.symbol), confidence: conf };
+      // `Order.objects.filter(...)`, `Order.where(...)`, `order.save()` on an ORM entity.
+      const model = modelOf(facts, s.qualifiedName);
+      if (model) return this.modelAccess(ctx, model, rest, conf);
+      return { target: sid, confidence: conf * 0.7 };
     }
     if (s.kind !== 'variable') return { target: sid, confidence: conf };
 
@@ -867,6 +1109,17 @@ export class GraphIndex {
       if (t?.kind === 'external') return this.memberOfExternal(ctx, t.provider, rest, ref);
     }
     return { target: sid, confidence: conf * 0.8 };
+  }
+
+  /** A read or write on an ORM model, judged by the last operation in the chain that looks like one. */
+  private modelAccess(ctx: Ctx, model: ModelFact, rest: string[], conf: number): Resolved {
+    const target = this.modelNode(ctx, model.name, model.orm);
+    const ops = rest.map(strip).reverse();
+    const write = ops.find((op) => MODEL_WRITE.test(op));
+    if (write) return { target, confidence: conf * 0.9, edgeKind: 'WRITES_TO', meta: { op: write } };
+    const read = ops.find((op) => MODEL_READ.test(op));
+    if (read) return { target, confidence: conf * 0.9, edgeKind: 'READS_FROM', meta: { op: read } };
+    return { target, confidence: conf * 0.8 };
   }
 
   private memberOfExternal(ctx: Ctx, p: ExternalProvider, rest: string[], ref: ReferenceFact | undefined): Resolved {
@@ -906,6 +1159,12 @@ export class GraphIndex {
     } else if (chain.length === 2 && HTTP_VERBS.has(chain[1]!.toLowerCase()) && this.isHttpClient(ctx, ref.from, head)) {
       url = str(args?.[0]);
       method = chain[1];
+    } else if (languageOfPath(ctx.path) !== 'js') {
+      const verb = FOREIGN_HTTP_VERB.exec(strip(chain[chain.length - 1]!))?.[1];
+      if (verb && this.isForeignHttpClient(ctx, ref.from, chain.slice(0, -1).map(strip))) {
+        url = str(args?.[0]);
+        method = verb;
+      }
     }
     if (!url) return false;
     this.httpCallers.add(ctx.path);
@@ -938,6 +1197,38 @@ export class GraphIndex {
     if (local?.startsWith('call:')) return HTTP_FACTORIES.has(local.slice(5));
     const t = this.resolveName(ctx, ctx.path, [name]);
     return t?.kind === 'symbol' && !!t.symbol.initCall && HTTP_FACTORIES.has(t.symbol.initCall);
+  }
+
+  /**
+   * HTTP clients outside JavaScript: modules (`requests`, Go `net/http`,
+   * Laravel `Http`), Ruby / Rust globals (`HTTParty`, `reqwest`) and client
+   * instances held in locals or fields (`HttpClient`, `RestTemplate`).
+   */
+  private isForeignHttpClient(ctx: Ctx, from: string, receiver: string[]): boolean {
+    const lang = languageOfPath(ctx.path);
+    if (receiver.length === 1) {
+      const name = receiver[0]!;
+      const binding = importBinding(ctx.facts, name);
+      if (binding) return FOREIGN_HTTP_MODULES.has(binding.source);
+      if (lang === 'ruby' || lang === 'rust') return FOREIGN_HTTP_GLOBALS.has(name);
+      const local = this.lookupLocal(ctx.facts, from, name);
+      return !!local && this.isHttpClientType(ctx, local);
+    }
+    if (receiver.length === 2 && receiver[0] === 'this') {
+      const enclosing = this.enclosingSymbol(ctx.facts, from);
+      const owner = enclosing?.kind === 'class' ? enclosing : enclosing?.parent ? symbolIndex(ctx.facts).get(enclosing.parent) : undefined;
+      const field = owner?.fields?.find((f) => f.name === receiver[1]);
+      const type = field?.instanceOf ?? field?.type;
+      return !!type && this.isHttpClientType(ctx, type);
+    }
+    return false;
+  }
+
+  private isHttpClientType(ctx: Ctx, type: string): boolean {
+    if (type.startsWith('call:')) return false;
+    if (FOREIGN_HTTP_TYPES.has(type) || FOREIGN_HTTP_TYPES.has(type.split('.').pop()!)) return true;
+    const binding = importBinding(ctx.facts, type.split('.')[0]!);
+    return !!binding && /^(GuzzleHttp|System\.Net\.Http|org\.springframework\.web\.(client|reactive))/.test(binding.source);
   }
 
   private matchRoute(path: string, method: string, appRoot: string): { id: string; confidence: number } | null {

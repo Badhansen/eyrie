@@ -1,13 +1,22 @@
 import { createHash } from 'node:crypto';
 import type { FileFacts, SourceLanguage } from '@eyrie/core';
+import type { BaseExtractor } from './base.js';
+import { CSharpExtractor } from './csharp.js';
+import { GoExtractor } from './go.js';
+import { JavaExtractor } from './java.js';
 import { ParserPool, SOURCE_EXTENSIONS, detectLanguage, type GrammarLanguage } from './languages.js';
+import { PhpExtractor } from './php.js';
 import { extractPrisma } from './prisma.js';
+import { PythonExtractor } from './python.js';
+import { RubyExtractor } from './ruby.js';
+import { RustExtractor } from './rust.js';
 import { TypeScriptExtractor } from './typescript.js';
 
 export { SOURCE_EXTENSIONS, detectLanguage } from './languages.js';
+export { goPackageName } from './go.js';
 
 /** Bump whenever extraction output changes so cached facts are re-parsed. */
-export const FACTS_VERSION = '2';
+export const FACTS_VERSION = '3';
 
 /**
  * A language adapter turns one file into facts. Adding a language means
@@ -24,9 +33,26 @@ export function contentHash(source: string): string {
   return createHash('sha1').update(source).digest('hex').slice(0, 16);
 }
 
-export class TypeScriptAdapter implements LanguageAdapter {
-  readonly id = 'typescript';
-  readonly languages = ['typescript', 'tsx', 'javascript', 'jsx'] as const;
+type ExtractorClass = new (path: string, language: SourceLanguage, hash: string, source: string) => Pick<BaseExtractor, 'run'>;
+
+const EXTRACTORS: Record<GrammarLanguage, ExtractorClass> = {
+  typescript: TypeScriptExtractor,
+  tsx: TypeScriptExtractor,
+  javascript: TypeScriptExtractor,
+  jsx: TypeScriptExtractor,
+  python: PythonExtractor,
+  go: GoExtractor,
+  java: JavaExtractor,
+  rust: RustExtractor,
+  csharp: CSharpExtractor,
+  php: PhpExtractor,
+  ruby: RubyExtractor,
+};
+
+/** Every tree-sitter language: parse once, hand the tree to that language's extractor. */
+export class TreeSitterAdapter implements LanguageAdapter {
+  readonly id = 'tree-sitter';
+  readonly languages = Object.keys(EXTRACTORS) as GrammarLanguage[];
   private pool = new ParserPool();
 
   async extract(path: string, source: string, language: GrammarLanguage): Promise<FileFacts | null> {
@@ -34,7 +60,7 @@ export class TypeScriptAdapter implements LanguageAdapter {
     const tree = parser.parse(source);
     if (!tree) return null;
     try {
-      return new TypeScriptExtractor(path, language, contentHash(source), source).run(tree.rootNode);
+      return new EXTRACTORS[language](path, language, contentHash(source), source).run(tree.rootNode);
     } finally {
       tree.delete();
     }
@@ -54,7 +80,7 @@ export function shouldSkipSource(source: string): boolean {
 }
 
 export class SourceParser {
-  private adapter = new TypeScriptAdapter();
+  private adapter = new TreeSitterAdapter();
 
   supports(path: string): boolean {
     return detectLanguage(path) !== null;
