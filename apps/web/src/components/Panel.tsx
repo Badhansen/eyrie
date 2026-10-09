@@ -43,7 +43,7 @@ export function Panel() {
   return (
     <aside
       aria-label={`${node.label} details`}
-      className="detail-panel scroll-thin fixed inset-x-0 bottom-0 z-20 max-h-[68vh] overflow-y-auto rounded-t-xl border-t border-rule bg-ink-1 md:static md:z-auto md:max-h-none md:w-[384px] md:shrink-0 md:rounded-none md:border-t-0 md:border-l"
+      className="detail-panel scroll-thin fixed inset-x-0 bottom-0 z-20 max-h-[min(60dvh,calc(100dvh-340px))] overflow-y-auto rounded-t-lg border-t border-rule bg-ink-1 md:static md:z-auto md:max-h-none md:w-[384px] md:shrink-0 md:rounded-none md:border-t-0 md:border-l"
     >
       <Details key={node.id} node={node} />
     </aside>

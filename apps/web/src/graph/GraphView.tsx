@@ -4,20 +4,10 @@ import { GraphScene3D } from '../graph3d/scene3d';
 import { SequenceView } from './SequenceView';
 import { store, useStore, type Lens, type ViewMode } from '../state/store';
 import { focusSet, matches } from './analysis';
-import { GraphCanvas } from './canvas';
+import { FlowCanvas } from './FlowCanvas';
 import { computeLayout, type Layout } from './layout';
 import type { GraphRenderer, Highlight } from './renderer';
 import { useLensGraph } from './useLensGraph';
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-function createRenderer(view: ViewMode, host: HTMLDivElement): GraphRenderer {
-  const onSelect = (id: string | null) => store.select(id);
-  if (view === '3d') return new GraphScene3D(host, { onSelect });
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  host.appendChild(svg);
-  return new GraphCanvas(svg, { onSelect });
-}
 
 export function GraphView() {
   const lens = useStore((s) => s.lens);
@@ -32,6 +22,7 @@ export function GraphView() {
 /** The architecture and data-flow lenses are the same map, drawn in 2D or 3D. */
 function MapView() {
   const hostRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<GraphRenderer | null>(null);
   const rendererRef = useRef<GraphRenderer | null>(null);
   const layoutRef = useRef<Layout | null>(null);
   const highlightRef = useRef<Highlight | null>(null);
@@ -54,7 +45,8 @@ function MapView() {
   // One renderer at a time; switching views rebuilds it from the current layout.
   useEffect(() => {
     const host = hostRef.current!;
-    const renderer = createRenderer(view, host);
+    const renderer = view === '3d' ? new GraphScene3D(host, { onSelect: (id) => store.select(id) }) : flowRef.current;
+    if (!renderer) return;
     rendererRef.current = renderer;
     const layout = layoutRef.current;
     if (layout?.nodes.size) {
@@ -67,7 +59,7 @@ function MapView() {
     return () => {
       window.removeEventListener('resize', onResize);
       renderer.destroy();
-      host.replaceChildren();
+      if (view === '3d') host.replaceChildren();
       if (rendererRef.current === renderer) rendererRef.current = null;
     };
   }, [view]);
@@ -130,6 +122,7 @@ function MapView() {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <div ref={hostRef} className="absolute inset-0" />
+      {view === '2d' ? <FlowCanvas ref={flowRef} onSelect={(id) => store.select(id)} /> : null}
       <div className="absolute right-3 bottom-3 flex items-end gap-2">
         {view === '3d' ? (
           <ControlGroup>

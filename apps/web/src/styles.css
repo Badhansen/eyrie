@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@xyflow/react/dist/style.css';
 @import '@fontsource-variable/archivo/standard.css';
 @import '@fontsource/fragment-mono';
 
@@ -154,43 +155,85 @@ button:disabled {
 .cat-utility { --c: var(--color-utility); }
 .cat-broken { --c: var(--color-broken); }
 
-/* ── graph canvas ──────────────────────────────────────────────────────── */
-.graph {
-  --edge: color-mix(in oklab, var(--color-text) 22%, transparent);
-  --edge-hot: color-mix(in oklab, var(--color-text) 80%, transparent);
-  cursor: grab;
-  touch-action: none;
+/* React Flow uses the same semantic ink and category tokens as the city. */
+.flow-canvas { position: absolute; inset: 0; }
+.flow-canvas .react-flow {
+  --xy-background-color: var(--color-ink-0);
+  --xy-edge-stroke: var(--color-dim);
+  --xy-minimap-background-color: var(--color-ink-1);
+  --xy-minimap-mask-background-color: var(--color-ink-0);
+  --xy-node-boxshadow-hover: none;
+  --xy-node-boxshadow-selected: none;
 }
-.graph:active {
-  cursor: grabbing;
+.flow-canvas .react-flow__handle { visibility: hidden; }
+.flow-canvas .react-flow__node { cursor: pointer; }
+.flow-canvas .react-flow__node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 4px; border-radius: 7px; }
+.flow-canvas.animate-layout .react-flow__node { transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+.flow-node {
+  width: 216px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--c) 28%, var(--color-rule));
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--c) 3%, var(--color-ink-2));
+  transition: background-color 140ms ease, border-color 140ms ease, opacity 160ms ease;
+}
+.flow-node:hover { border-color: color-mix(in oklab, var(--c) 70%, var(--color-rule)); }
+.flow-node.is-selected { border-color: var(--c); outline: 1px solid var(--c); background: color-mix(in oklab, var(--c) 9%, var(--color-ink-2)); }
+.flow-node.is-match { border-color: var(--c); }
+.flow-node.is-dim { opacity: 0.3; }
+.flow-node.is-faded { opacity: 0.55; }
+.flow-node.is-broken { border-style: dashed; }
+.flow-node-meta { display: flex; align-items: center; gap: 5px; height: 14px; color: var(--c); font: 10px var(--font-mono); white-space: nowrap; }
+.flow-node-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); font-size: 14px; line-height: 20px; font-weight: 650; }
+.flow-node-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-dim); font: 10px/15px var(--font-mono); }
+.flow-change { display: grid; place-items: center; width: 16px; height: 16px; margin-left: auto; border-radius: 3px; font-size: 12px; background: var(--color-ink-0); }
+.flow-change.new { color: var(--color-new); }
+.flow-change.modified { color: var(--color-modified); }
+.flow-change.removed { color: var(--color-removed); }
+.flow-node.mark-new { animation: flow-enter 260ms ease-out; }
+.flow-node.is-exiting { pointer-events: none; animation: flow-exit 280ms ease-in forwards; }
+@keyframes flow-enter { from { opacity: 0; transform: translateY(7px); } }
+@keyframes flow-exit { to { opacity: 0; transform: scale(0.96); } }
+.flow-edge .react-flow__edge-path { stroke: color-mix(in oklab, var(--color-text) 32%, var(--color-ink-0)); stroke-width: 1.4; }
+.react-flow__edge.http .react-flow__edge-path { stroke-dasharray: 5 4; }
+.react-flow__edge.data .react-flow__edge-path { stroke: color-mix(in oklab, var(--color-data) 65%, var(--color-ink-0)); }
+.react-flow__edge.role-read .react-flow__edge-path { stroke: var(--color-data); stroke-width: 2; }
+.react-flow__edge.role-write .react-flow__edge-path,
+.react-flow__edge.role-readwrite .react-flow__edge-path { stroke: var(--color-service); stroke-width: 2; }
+.react-flow__edge.role-transfer .react-flow__edge-path { stroke-dasharray: 7 4; }
+.react-flow__edge.role-carry .react-flow__edge-path { stroke-dasharray: 2 4; }
+.flow-edge.hot .react-flow__edge-path { stroke: var(--color-text); stroke-width: 2; }
+.react-flow__edge.is-dim { opacity: 0.14; }
+.react-flow__edge.is-faded { opacity: 0.4; }
+.flow-lanes { position: absolute; z-index: -1; pointer-events: none; }
+.flow-lane { position: absolute; top: -4000px; height: 8000px; border-left: 1px solid color-mix(in oklab, var(--color-rule) 45%, transparent); }
+.flow-lane.alternate { background: color-mix(in oklab, var(--color-text) 2%, transparent); }
+.flow-ruler { position: absolute; inset: 0 0 auto; height: 40px; z-index: 5; background: color-mix(in oklab, var(--color-ink-0) 96%, transparent); border-bottom: 1px solid var(--color-rule); pointer-events: none; }
+.flow-lane-label { position: absolute; top: 13px; display: flex; gap: 8px; color: var(--color-faint); font: 10px/14px var(--font-mono); text-transform: uppercase; overflow: hidden; white-space: nowrap; }
+.flow-lane-label b { color: var(--color-dim); font-weight: 400; }
+.flow-lane-jump { position: absolute; top: 4px; height: 32px; max-width: 112px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid var(--color-rule); border-radius: 4px; background: var(--color-ink-1); color: var(--color-dim); font: 10px var(--font-mono); pointer-events: auto; cursor: pointer; }
+.flow-lane-jump.left { left: 4px; }
+.flow-lane-jump.right { right: 4px; }
+.flow-lane-jump:hover { background: var(--color-ink-3); color: var(--color-text); }
+.flow-lane-jump span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-lane-change.new { color: var(--color-new); }
+.flow-lane-change.modified { color: var(--color-modified); }
+.flow-lane-change.removed { color: var(--color-removed); }
+.flow-canvas .react-flow__minimap { width: 160px; height: 100px; left: 12px; bottom: 52px; margin: 0; border: 1px solid var(--color-rule-strong); border-radius: 6px; overflow: hidden; }
+.flow-canvas .react-flow__minimap svg { width: 160px; height: 100px; }
+.flow-canvas .react-flow__attribution { top: 44px; right: 12px; margin: 0; background: var(--color-ink-1); border-radius: 3px; font: 9px var(--font-mono); }
+.flow-canvas .react-flow__attribution a { color: var(--color-faint); }
+@media (max-width: 767px) { .flow-canvas .react-flow__minimap { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .flow-canvas.animate-layout .react-flow__node { transition: none; }
+  .flow-node.mark-new, .flow-node.is-exiting { animation: none; }
 }
 
-.lane-band {
-  fill: color-mix(in oklab, var(--color-text) 2.2%, transparent);
-}
-.lane-band.alt {
-  fill: transparent;
-}
-.lane-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  fill: var(--color-faint);
-}
-.lane-rule {
-  stroke: var(--color-rule-strong);
-}
-.lane-offscreen {
-  fill: var(--color-dim);
-}
-.ruler-dot.new { fill: var(--color-new); }
-.ruler-dot.modified { fill: var(--color-modified); }
-.ruler-dot.removed { fill: var(--color-removed); }
-.ruler-bg {
-  fill: color-mix(in oklab, var(--color-ink-0) 82%, transparent);
-}
-
+/* Shared SVG dependencies on the 3D city floor. */
 .edge path.line {
   fill: none;
   stroke: var(--edge);
@@ -240,117 +283,6 @@ button:disabled {
   opacity: 0.35;
 }
 
-.node {
-  cursor: pointer;
-  transition: opacity 180ms ease;
-}
-.node .body {
-  fill: color-mix(in oklab, var(--c) 9%, var(--color-ink-2));
-  stroke: color-mix(in oklab, var(--c) 38%, transparent);
-  stroke-width: 1;
-  transition: stroke 160ms ease, fill 160ms ease;
-}
-.node .accent {
-  fill: var(--c);
-}
-.node .label {
-  font-size: 13px;
-  font-weight: 620;
-  font-stretch: 87.5%;
-  fill: var(--color-text);
-}
-.node .sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  fill: var(--color-dim);
-}
-.node .kind {
-  font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  fill: color-mix(in oklab, var(--c) 80%, var(--color-text));
-}
-.node:hover .body,
-.node:focus-visible .body {
-  stroke: color-mix(in oklab, var(--c) 75%, transparent);
-}
-.node:focus {
-  outline: none;
-}
-.node:focus-visible .body {
-  stroke-width: 2;
-}
-.node.selected .body {
-  stroke: var(--c);
-  stroke-width: 1.75;
-  fill: color-mix(in oklab, var(--c) 16%, var(--color-ink-2));
-}
-.node.selected .glow {
-  opacity: 1;
-}
-.node .glow {
-  fill: none;
-  stroke: var(--c);
-  stroke-width: 6;
-  opacity: 0;
-  filter: blur(6px);
-  transition: opacity 200ms ease;
-}
-.node.match .body {
-  stroke: var(--color-text);
-  stroke-width: 1.5;
-}
-.node.dim {
-  opacity: 0.3;
-}
-.node.faded {
-  opacity: 0.55;
-}
-.node.broken .body {
-  stroke: var(--color-broken);
-  stroke-dasharray: 4 3;
-  fill: color-mix(in oklab, var(--color-broken) 10%, var(--color-ink-2));
-}
-
-/* change halos: colour + glyph, so "new" never reads as "API" */
-.node .halo {
-  fill: none;
-  stroke-width: 1.5;
-  stroke-dasharray: 3 3;
-  opacity: 0;
-}
-.node .badge {
-  opacity: 0;
-}
-.node .badge circle {
-  stroke: var(--color-ink-0);
-  stroke-width: 2;
-}
-.node .badge text {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  fill: var(--color-ink-0);
-}
-.node.mark-new .halo { stroke: var(--color-new); opacity: 1; }
-.node.mark-new .badge { opacity: 1; }
-.node.mark-new .badge circle { fill: var(--color-new); }
-.node.mark-modified .halo { stroke: var(--color-modified); opacity: 1; }
-.node.mark-modified .badge { opacity: 1; }
-.node.mark-modified .badge circle { fill: var(--color-modified); }
-.node.mark-removed .halo { stroke: var(--color-removed); opacity: 1; }
-.node.mark-removed .badge { opacity: 1; }
-.node.mark-removed .badge circle { fill: var(--color-removed); }
-
-.node.mark-new .halo,
-.node.mark-modified .halo {
-  animation: halo-march 1.2s linear infinite;
-}
-.node.pulse .body {
-  animation: pulse 900ms ease-out 2;
-}
-
 .particle {
   fill: var(--color-text);
   pointer-events: none;
@@ -363,20 +295,6 @@ button:disabled {
   pointer-events: none;
 }
 
-@keyframes halo-march {
-  to {
-    stroke-dashoffset: -12;
-  }
-}
-@keyframes pulse {
-  0% {
-    stroke: var(--color-modified);
-    stroke-width: 4;
-  }
-  100% {
-    stroke-width: 1;
-  }
-}
 @keyframes tick-in {
   from {
     transform: scaleY(0);
@@ -525,8 +443,8 @@ button:disabled {
 .ripple-removed { stroke: var(--color-removed); }
 
 .block3d {
-  --w: 184px;
-  --d: 52px;
+  --w: 216px;
+  --d: 80px;
   position: absolute;
   left: 0;
   top: 0;

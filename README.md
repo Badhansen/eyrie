@@ -41,7 +41,7 @@ Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore
 
 ```
 files ──► parser (tree-sitter) ──► facts per file ──► code graph ──► architecture graph ──► UI
-             cached by content hash      (Graphology + SQLite)    (deterministic rules)    (ELK layout; D3 2D view,
+             cached by content hash      (Graphology + SQLite)    (deterministic rules)    (ELK layout; React Flow 2D,
                                                                                             CSS 3D city; anime.js motion)
                                               ▲
 file watcher ── changed files only ───────────┘   diffs ──► WebSocket events ──► animations
@@ -86,7 +86,7 @@ packages/
   engine/        scanning, ignore rules, config loading, watching, update pipeline
   server/        CLI, HTTP API and WebSocket
 apps/
-  web/           React UI: ELK layout, D3 2D view, CSS 3D city view, anime.js animation
+  web/           React UI: ELK layout, React Flow 2D view, CSS 3D city view, anime.js animation
 fixtures/
   bookstore-app/ sample Next.js app used by tests and demos
 scripts/

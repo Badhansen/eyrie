@@ -38,6 +38,11 @@ typography:
     fontSize: "13px"
     fontWeight: 620
     lineHeight: 1.35
+  graph-title:
+    fontFamily: "Archivo Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 650
+    lineHeight: "20px"
   body:
     fontFamily: "Archivo Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "13px"
@@ -74,8 +79,9 @@ components:
     backgroundColor: "{colors.ink-2}"
     textColor: "{colors.text}"
     rounded: "{rounded.node}"
-    padding: "8px 10px"
-    width: "184px"
+    padding: "10px 12px"
+    width: "216px"
+    height: "80px"
   details-panel:
     backgroundColor: "{colors.ink-1}"
     textColor: "{colors.text}"
@@ -144,7 +150,8 @@ Both families are bundled locally through `@fontsource*`; the interface does not
 ### Hierarchy
 - **Display** (750, 20px, 1.2): The largest, rare heading in a centered connection or access state.
 - **Headline** (750, 15px, about 1.3): Repository identity and compact view headings.
-- **Title** (620, 13px, about 1.35): Graph-node labels and compact section content.
+- **Title** (620, 13px, about 1.35): Compact section content.
+- **Graph Title** (650, 14px, 20px): React Flow component labels.
 - **Body** (400, 13px, 1.5): Explanatory copy and normal interface text.
 - **Label** (400, 10px, 1.4, uppercase where semantic): Lane names, metadata, and section labels; monospace is reserved for technical identifiers and compact metadata.
 
@@ -157,9 +164,9 @@ Archivo's width axis provides emphasis and fit: `.wide` uses 125% stretch for se
 
 The application fills the viewport height with a compact top bar, a central canvas, an optional details panel, and a change tape. The canvas absorbs available space. Opening details overlays or occupies a fixed side panel without causing the map to reflow. On narrow screens the details panel moves to the bottom; fewer lanes fit in view rather than shrinking graph nodes.
 
-The lane order is fixed product vocabulary: UI → Edge → API → Logic → Data → External. A lane ruler identifies off-screen lanes and changed components. The 2D node width is 184px; the 3D block uses the same width and a 52px floor depth. Fitting the 2D map never reduces scale below 0.85, preserving node-label readability while allowing the user to pan across wide maps. The 3D scene uses a 2300px perspective with its origin at 50% 32%.
+The lane order is fixed product vocabulary: UI → Edge → API → Logic → Data → External. React Flow owns the 2D viewport, accessible component interactions, and pannable minimap; ELK remains the shared layout and routing authority. A lane ruler identifies off-screen lanes and changed components, with arrow controls to reveal each lane. The 2D nodes and 3D floors are 216px wide and 80px deep. Fitting the 2D map never reduces scale below 0.85, preserving node-label readability while allowing the user to pan across wide maps. The minimap recedes on narrow screens, and the mobile inspector reserves room for the selected node. The 3D scene uses a 2300px perspective with its origin at 50% 32%.
 
-Controls and dividers use compact, measured spacing: the top bar has 16px horizontal padding, the details panel uses 20px internal padding, and graph nodes use 6–13px internal offsets. The canvas owns pan and zoom; it has no page-level scroll. `F` fits the graph at any viewport size.
+Controls and dividers use compact, measured spacing: the top bar has 16px horizontal padding, the details panel uses 20px internal padding, and React Flow nodes use 10px vertical and 12px horizontal padding with a 3px content gap. The canvas owns pan and zoom; it has no page-level scroll. `F` fits the graph at any viewport size.
 
 ## Elevation & Depth
 
@@ -169,7 +176,7 @@ Depth is conveyed first by tonal surface shifts and thin borders, not broad drop
 
 ## Shapes
 
-The form language is compact and technical. Badges and ticks use 2px corners; graph nodes and 3D block tops use 7px; panel and overlay silhouettes use 12–14px; dots are circular. Controls may use 4–6px corners, while category filters and connection-status indicators are intentionally pill-shaped. Hairline borders carry most container definition. The 3D block's 3px category accent is an intentional semantic marker shared with the 2D node identity. Do not round every surface to the same radius.
+The form language is compact and technical. Badges and ticks use 2px corners; graph nodes and 3D block tops use 7px; the mobile details panel uses 8px top corners; overlay silhouettes use 12–14px; dots are circular. Controls may use 4–6px corners, while category filters and connection-status indicators are intentionally pill-shaped. Hairline borders carry most container definition. The 3D block's 3px category accent is an intentional semantic marker shared with the 2D node identity. Do not round every surface to the same radius.
 
 ## Components
 
@@ -183,7 +190,7 @@ Category filters are compact outlined pills with a semantic swatch, a short labe
 
 ### Cards / Containers
 
-The details panel is an unshadowed `ink-1` surface with a one-pixel rule at its edge. On desktop it is 384px wide; on narrow viewports it sits at the bottom with a 68vh maximum height and a 12px top radius. Sections remain in stable order so the user can scan purpose, source, calls, dependents, and symbols.
+The details panel is an unshadowed `ink-1` surface with a one-pixel rule at its edge. On desktop it is 384px wide; on narrow viewports it sits at the bottom with an 8px top radius and a maximum height of `min(60dvh, calc(100dvh - 340px))`, preserving canvas space above the inspector. Sections remain in stable order so the user can scan purpose, source, calls, dependents, and symbols.
 
 ### Inputs / Fields
 
@@ -195,7 +202,7 @@ The top bar holds repository identity, the three lens options, search, category 
 
 ### Architecture Nodes
 
-Nodes are the signature component and the main visual content. Each is 184px wide with a 7px radius, an `ink-2` body, a restrained category-tinted fill and border, a sans-serif component label, and a monospace path or route. Selection strengthens the category border and surface tint; broken references use a red dashed border. In the 3D city, block height encodes lines of code and has no second meaning.
+Nodes are the signature component and the main visual content. Each is 216px wide with a 7px radius, an `ink-2` body, a restrained category-tinted fill and border, a sans-serif component label, and a monospace path or route. The React Flow node adds a category-coloured kind icon and a separate change glyph, preserving the distinction between category and change state. Selection strengthens the category border and surface tint; broken references use a red dashed border. In the 3D city, block height encodes lines of code and has no second meaning.
 
 ### Edges and Change Tape
 

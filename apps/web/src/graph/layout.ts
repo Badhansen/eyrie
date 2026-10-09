@@ -1,8 +1,8 @@
 import ELK, { type ElkExtendedEdge, type ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { ARCH_LANES, type ArchEdge, type ArchLane, type ArchNode } from '@eyrie/core';
 
-export const NODE_W = 184;
-export const NODE_H = 52;
+export const NODE_W = 216;
+export const NODE_H = 80;
 
 export interface Point {
   x: number;

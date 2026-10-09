@@ -28,7 +28,8 @@
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "Rare connection and access-state heading." },
       "headline": { "displayName": "Headline", "purpose": "Repository and compact view identity." },
-      "title": { "displayName": "Title", "purpose": "Graph-node labels and compact section content." },
+      "title": { "displayName": "Title", "purpose": "Compact section content." },
+      "graph-title": { "displayName": "Graph Title", "purpose": "React Flow component labels at 14px, weight 650, and 20px line height." },
       "body": { "displayName": "Body", "purpose": "Interface prose." },
       "label": { "displayName": "Technical Label", "purpose": "Repository identifiers and compact metadata in Fragment Mono." }
     },
@@ -76,7 +77,7 @@
         "refersTo": "graph-node",
         "description": "A graph component block with category identity, label, and source path.",
         "html": "<button class=\"ds-node\" type=\"button\"><span class=\"ds-node-kind\">frontend</span><strong>TopBar</strong><code>src/components/TopBar.tsx</code></button>",
-        "css": ".ds-node { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 184px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--color-frontend) 38%, transparent); border-radius: 7px; background: color-mix(in oklab, var(--color-frontend) 9%, var(--color-ink-2)); color: var(--color-text); text-align: left; cursor: pointer; } .ds-node:hover { border-color: color-mix(in oklab, var(--color-frontend) 75%, transparent); } .ds-node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 2px; } .ds-node strong { font: 620 13px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-node-kind, .ds-node code { color: var(--color-dim); font: 10px 'Fragment Mono', ui-monospace, monospace; } .ds-node-kind { color: var(--color-frontend); text-transform: uppercase; letter-spacing: .08em; }"
+        "css": ".ds-node { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 216px; height: 80px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--color-frontend) 28%, var(--color-rule)); border-radius: 7px; background: color-mix(in oklab, var(--color-frontend) 3%, var(--color-ink-2)); color: var(--color-text); text-align: left; cursor: pointer; } .ds-node:hover { border-color: color-mix(in oklab, var(--color-frontend) 70%, var(--color-rule)); } .ds-node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 4px; } .ds-node strong { font: 650 14px/20px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-node-kind, .ds-node code { color: var(--color-dim); font: 10px 'Fragment Mono', ui-monospace, monospace; } .ds-node-kind { color: var(--color-frontend); }"
       },
       {
         "name": "Details Panel Header",
