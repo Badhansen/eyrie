@@ -227,61 +227,45 @@ button:disabled {
 .flow-canvas .react-flow__minimap svg { width: 160px; height: 100px; }
 .flow-canvas .react-flow__attribution { top: 44px; right: 12px; margin: 0; background: var(--color-ink-1); border-radius: 3px; font: 9px var(--font-mono); }
 .flow-canvas .react-flow__attribution a { color: var(--color-faint); }
+.flow-city .react-flow { --xy-background-color: transparent; }
+.city-webgl { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.city-canvas { display: block; width: 100%; height: 100%; }
+.flow-city .react-flow__renderer { z-index: 1; }
+.flow-city .react-flow__minimap { z-index: 5; }
+.flow-city .city-label {
+  width: 216px;
+  height: 68px;
+  padding: 4px 10px;
+  gap: 2px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  transform-origin: 0 0;
+}
+.city-label.mark-new { animation: city-label-enter 260ms ease-out; }
+.city-label.is-exiting { animation: city-label-exit 280ms ease-in forwards; }
+@keyframes city-label-enter { from { opacity: 0; } }
+@keyframes city-label-exit { to { opacity: 0; } }
+.flow-city .city-label:hover { background: color-mix(in oklab, var(--color-ink-2) 88%, transparent); }
+.flow-city .city-label.is-selected { outline: 1px solid var(--c); background: var(--color-ink-2); }
+.flow-city .city-label.is-match { outline: 1px solid var(--c); }
+.flow-city .react-flow__node:focus-visible { outline: none; }
+.flow-city .react-flow__node:focus-visible .city-label { outline: 2px solid var(--color-frontend); outline-offset: 2px; }
+.city-label .flow-node-meta { font-size: 11px; }
+.city-label .flow-node-title { font-size: 18px; line-height: 24px; }
+.city-label .flow-node-path { font-size: 11px; line-height: 16px; }
+.city-loading { position: absolute; top: 12px; left: 12px; z-index: 6; color: var(--color-dim); }
+.city-lane-label { position: absolute; display: flex; gap: 8px; transform: translateX(-50%); color: var(--color-faint); font: 10px var(--font-mono); text-transform: uppercase; white-space: nowrap; }
+.city-lane-label b { font-weight: 400; color: var(--color-dim); }
+.city-error { position: absolute; top: 12px; left: 12px; z-index: 6; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--color-rule); border-radius: 4px; background: var(--color-ink-1); color: var(--color-text); }
+.city-error button { color: var(--color-frontend); text-decoration: underline; cursor: pointer; }
+.flow-city.webgl-unavailable .city-label { border: 1px solid var(--c); background: var(--color-ink-2); }
 @media (max-width: 767px) { .flow-canvas .react-flow__minimap { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .flow-canvas.animate-layout .react-flow__node { transition: none; }
   .flow-node.mark-new, .flow-node.is-exiting { animation: none; }
 }
 
-/* Shared SVG dependencies on the 3D city floor. */
-.edge path.line {
-  fill: none;
-  stroke: var(--edge);
-  stroke-width: 1.25;
-  transition: stroke 160ms ease, opacity 160ms ease;
-}
-.edge.http:not(.drawing) path.line {
-  stroke-dasharray: 5 4;
-}
-.edge.data path.line {
-  stroke: color-mix(in oklab, var(--color-data) 45%, transparent);
-}
-
-/* Data-flow lens: what the link carries. Reads point out of the store. */
-.edge.role-read path.line,
-.edge.role-write path.line,
-.edge.role-readwrite path.line {
-  stroke-width: 1.6;
-}
-.edge.role-read path.line {
-  stroke: color-mix(in oklab, var(--color-data) 70%, transparent);
-}
-.edge.role-write path.line,
-.edge.role-readwrite path.line {
-  stroke: color-mix(in oklab, var(--color-service) 72%, transparent);
-}
-.edge.role-transfer:not(.drawing) path.line {
-  stroke-dasharray: 5 4;
-}
-.edge.role-carry path.line {
-  stroke: color-mix(in oklab, var(--color-text) 13%, transparent);
-}
-.edge path.hit {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 12;
-  cursor: help;
-}
-.edge.hot path.line {
-  stroke: var(--edge-hot);
-  stroke-width: 1.75;
-}
-.edge.dim {
-  opacity: 0.12;
-}
-.edge.faded {
-  opacity: 0.35;
-}
 
 .particle {
   fill: var(--color-text);
@@ -336,299 +320,6 @@ button:disabled {
   scrollbar-color: var(--color-rule-strong) transparent;
 }
 
-/* ── 3D view ───────────────────────────────────────────────────────────────
- * The layout becomes a city floor: lanes are districts, components are blocks
- * whose height encodes lines of code, dependencies are tracks on the ground.
- * Light comes from the upper left, so left faces are lighter than front faces.
- */
-.scene3d {
-  --edge: color-mix(in oklab, var(--color-text) 34%, transparent);
-  --edge-hot: color-mix(in oklab, var(--color-text) 90%, transparent);
-  --shadow: rgb(0 0 0 / 0.5);
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  perspective: 2300px;
-  perspective-origin: 50% 32%;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  background:
-    radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--color-ink-3) 70%, transparent), transparent 62%),
-    var(--color-ink-0);
-}
-.scene3d.dragging {
-  cursor: grabbing;
-}
-.cam3d,
-.world3d,
-.blocks3d {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform-style: preserve-3d;
-}
-.cam3d {
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-}
-.floor3d {
-  position: absolute;
-  left: 0;
-  top: 0;
-  overflow: visible;
-}
-.floor3d .grid-line {
-  fill: none;
-  stroke: color-mix(in oklab, var(--color-text) 7%, transparent);
-  stroke-width: 1;
-}
-.lane3d {
-  fill: color-mix(in oklab, var(--color-text) 3.5%, transparent);
-}
-.lane3d.alt {
-  fill: transparent;
-}
-.lane3d-label {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  fill: color-mix(in oklab, var(--color-text) 26%, transparent);
-}
-.floor3d .edge path.line {
-  fill: none;
-  stroke: var(--edge);
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  transition: stroke 160ms ease, opacity 160ms ease;
-}
-.floor3d .edge.http:not(.drawing) path.line {
-  stroke-dasharray: 6 5;
-}
-.floor3d .edge.data path.line {
-  stroke: color-mix(in oklab, var(--color-data) 60%, transparent);
-}
-.floor3d .edge.hot path.line {
-  stroke: var(--edge-hot);
-  stroke-width: 2.4;
-}
-.floor3d .edge.dim {
-  opacity: 0.1;
-}
-.floor3d .edge.faded {
-  opacity: 0.35;
-}
-.floor3d .edge.pending {
-  opacity: 0;
-}
-.floor3d .edge path.hit {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 12;
-}
-.floor3d .particle {
-  fill: var(--color-text);
-  filter: drop-shadow(0 0 4px var(--color-text));
-}
-
-.ripple {
-  fill: none;
-  stroke-width: 2;
-}
-.ripple-new { stroke: var(--color-new); }
-.ripple-modified { stroke: var(--color-modified); }
-.ripple-removed { stroke: var(--color-removed); }
-
-.block3d {
-  --w: 216px;
-  --d: 80px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: var(--w);
-  height: var(--d);
-  transform-style: preserve-3d;
-  transform: translate3d(var(--x), var(--y), var(--lift, 0px));
-  cursor: pointer;
-  outline: none;
-}
-.block3d .b-face,
-.block3d .b-shadow,
-.block3d .b-ring {
-  position: absolute;
-  box-sizing: border-box;
-  transition: opacity 180ms ease;
-}
-.block3d .b-top {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  transform: translateZ(var(--h));
-  border-radius: 7px;
-  padding: 6px 10px 0 13px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in oklab, var(--c) 15%, var(--color-ink-2));
-  border: 1px solid color-mix(in oklab, var(--c) 60%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, white 10%, transparent);
-}
-.block3d .b-top::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--c);
-}
-.block3d .b-front,
-.block3d .b-back {
-  left: 0;
-  width: 100%;
-  height: var(--h);
-  transform-origin: top;
-  transform: rotateX(90deg);
-}
-.block3d .b-front {
-  top: 100%;
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--c) 30%, var(--color-ink-1)), color-mix(in oklab, var(--c) 18%, var(--color-ink-0)));
-}
-.block3d .b-back {
-  top: 0;
-  background: color-mix(in oklab, var(--c) 14%, var(--color-ink-0));
-}
-.block3d .b-left,
-.block3d .b-right {
-  top: 0;
-  width: var(--h);
-  height: 100%;
-  transform-origin: left;
-  transform: rotateY(-90deg);
-}
-.block3d .b-left {
-  left: 0;
-  background: linear-gradient(to right, color-mix(in oklab, var(--c) 22%, var(--color-ink-0)), color-mix(in oklab, var(--c) 40%, var(--color-ink-1)));
-}
-.block3d .b-right {
-  left: 100%;
-  background: color-mix(in oklab, var(--c) 16%, var(--color-ink-0));
-}
-.block3d .b-shadow {
-  left: -4px;
-  top: 2px;
-  width: calc(100% + 14px);
-  height: calc(100% + 12px);
-  transform: translateZ(0.5px);
-  border-radius: 12px;
-  background: var(--shadow);
-  filter: blur(9px);
-}
-.block3d .b-ring {
-  left: -8px;
-  top: -8px;
-  width: calc(100% + 16px);
-  height: calc(100% + 16px);
-  transform: translateZ(1px);
-  border-radius: 14px;
-  border: 1.5px dashed transparent;
-}
-.block3d .b-kind {
-  font-family: var(--font-mono);
-  font-size: 8.5px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: color-mix(in oklab, var(--c) 80%, var(--color-text));
-  line-height: 12px;
-}
-.block3d .b-label {
-  font-size: 13px;
-  font-weight: 620;
-  font-stretch: 87.5%;
-  color: var(--color-text);
-  line-height: 17px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 10px;
-}
-.block3d .b-sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-dim);
-  line-height: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.block3d .b-badge {
-  position: absolute;
-  right: 4px;
-  top: 4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: none;
-  place-items: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-ink-0);
-}
-
-.block3d:hover .b-top,
-.block3d:focus-visible .b-top {
-  border-color: var(--c);
-}
-.block3d:focus-visible .b-top {
-  outline: 2px solid var(--color-frontend);
-  outline-offset: 2px;
-}
-.block3d.selected .b-top {
-  border-color: var(--c);
-  background: color-mix(in oklab, var(--c) 24%, var(--color-ink-2));
-  box-shadow: 0 0 0 1px var(--c), 0 0 26px color-mix(in oklab, var(--c) 55%, transparent);
-}
-.block3d.match .b-top {
-  outline: 1.5px solid var(--color-text);
-  outline-offset: 2px;
-}
-.block3d.dim .b-face,
-.block3d.dim .b-shadow {
-  opacity: 0.26;
-}
-.block3d.faded .b-face,
-.block3d.faded .b-shadow {
-  opacity: 0.5;
-}
-.block3d.broken .b-top {
-  border: 1.5px dashed var(--color-broken);
-  background: color-mix(in oklab, var(--color-broken) 12%, var(--color-ink-2));
-}
-.block3d.mark-new .b-ring { border-color: var(--color-new); }
-.block3d.mark-modified .b-ring { border-color: var(--color-modified); }
-.block3d.mark-removed .b-ring { border-color: var(--color-removed); }
-.block3d.mark-new .b-badge,
-.block3d.mark-modified .b-badge,
-.block3d.mark-removed .b-badge {
-  display: grid;
-}
-.block3d.mark-new .b-badge { background: var(--color-new); }
-.block3d.mark-modified .b-badge { background: var(--color-modified); }
-.block3d.mark-removed .b-badge { background: var(--color-removed); }
-.block3d.leaving {
-  pointer-events: none;
-}
-
-@media (prefers-color-scheme: light) {
-  .scene3d {
-    --shadow: rgb(20 30 40 / 0.22);
-  }
-}
 
 /* ── sequence view ─────────────────────────────────────────────────────── */
 .sequence {

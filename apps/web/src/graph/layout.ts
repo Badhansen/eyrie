@@ -1,4 +1,5 @@
-import ELK, { type ElkExtendedEdge, type ElkNode } from 'elkjs/lib/elk.bundled.js';
+import type ELK from 'elkjs/lib/elk.bundled.js';
+import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { ARCH_LANES, type ArchEdge, type ArchLane, type ArchNode } from '@eyrie/core';
 
 export const NODE_W = 216;
@@ -34,7 +35,8 @@ export interface Layout {
   height: number;
 }
 
-const elk = new ELK();
+let elk: Promise<InstanceType<typeof ELK>> | undefined;
+const getElk = () => elk ??= import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
 const laneIndex = (lane: ArchLane) => ARCH_LANES.indexOf(lane);
 
 /**
@@ -94,7 +96,7 @@ export async function computeLayout(nodes: ArchNode[], edges: ArchEdge[], previo
       .map((e): ElkExtendedEdge => ({ id: e.id, sources: [e.source], targets: [e.target] })),
   };
 
-  const out = await elk.layout(graph);
+  const out = await (await getElk()).layout(graph);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const placed = new Map<string, PlacedNode>();
   for (const c of out.children ?? []) placed.set(c.id, { node: byId.get(c.id)!, x: c.x ?? 0, y: c.y ?? 0 });

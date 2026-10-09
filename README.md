@@ -27,11 +27,11 @@ Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore
 ## What you see
 
 - **Three lenses** (`1`, `2`, `3`). *Architecture* is the map of what the system is made of. *Data flow* keeps only the components that touch data — stores, and anything that reads, writes or ships it — and colours every link by what it carries: orange writes, cyan reads, dashed for a call that leaves the process, faint for an in-process hand-off. Reads are drawn pointing **out of the store**, so the arrows follow the data rather than the dependency. *Sequence* picks one entry point and lays its calls out as a sequence diagram: lifelines across the top, messages down the page, each with the file and line that makes the call (click it to open your editor). All three are derived from the same static analysis; see [Known limitations](#known-limitations) for what sequence order can and cannot tell you.
-- **2D and 3D views** (press `V`). The 3D view turns the map into a city: lanes become districts on a perspective floor, components become blocks whose **height shows lines of code**, and dependencies run along the ground as tracks. Drag to pan, right-drag or `⌥`-drag to orbit, scroll or pinch to zoom, `Q`/`E` to rotate, `T` for a top-down plan, `R` to reset. Entering 3D tilts the flat map into perspective, raises the blocks lane by lane and draws the tracks in.
+- **2D and 3D views** (press `V`). Both use custom React Flow components for navigation and inspection. The 3D view adds a full-canvas Three.js city: components become lit blocks whose **height shows lines of code**, dependencies run along the ground, and upright labels remain readable as the camera rotates. Drag to pan, right-drag or `⌥`-drag to orbit, scroll or pinch to zoom, `Q`/`E` to rotate, `T` for a top-down plan, `R` to reset. The minimap navigates the projected city. If WebGL is unavailable, the view offers a switch back to 2D.
 - **Lanes.** Components are arranged left to right in the order a request travels: UI → Edge (middleware) → API → Logic → Data → External. A ruler at the top names the lanes and points to lanes that are off-screen.
 - **Colors carry meaning.** Blue frontend, green API, orange services, purple AI, cyan data, yellow external services, grey utilities. A missing API route (frontend calls `/api/x` and nothing serves it) is drawn in red.
 - **Links.** Solid lines are calls, dashed lines are HTTP requests (they cross a network boundary), cyan lines read or write data.
-- **Live changes.** New components get a green halo and a `+` badge, edited ones a yellow `~`, removed ones a red `−`. In 3D, new blocks drop in and bounce off the floor, edited blocks bounce in height, and removed blocks sink into the ground. Changes that happen off-screen show a colored dot on the lane ruler. Layout is stable: existing components keep their order when the map updates.
+- **Live changes.** New components get a green `+` badge, edited ones a yellow `~`, removed ones a red `−`. In 3D, new blocks rise into place and removed blocks briefly fade and sink. Selecting a component sends a bounded sweep along its dependencies; trace modes animate continuous request flow. The 2D lane ruler marks off-screen changes. Layout is stable: existing components keep their order when the map updates.
 - **Change tape.** Every save becomes a tick: height is the size of the change, color its type. Hover a tick to light up what it touched; click to jump there.
 - **Details panel.** Click a component to see its purpose (from its doc comment, or generated from the code), source location with a code preview, **Open in editor**, what it calls, what uses it, and the symbols inside.
 - **Trace and impact.** In the panel, *Depends on* follows the request through everything a component calls (with animated flow); *Impact* shows everything that could break if it changes, grouped into API, UI, services, data and external.
@@ -42,7 +42,7 @@ Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore
 ```
 files ──► parser (tree-sitter) ──► facts per file ──► code graph ──► architecture graph ──► UI
              cached by content hash      (Graphology + SQLite)    (deterministic rules)    (ELK layout; React Flow 2D,
-                                                                                            CSS 3D city; anime.js motion)
+                                                                                            Three.js city; anime.js motion)
                                               ▲
 file watcher ── changed files only ───────────┘   diffs ──► WebSocket events ──► animations
 ```
@@ -86,7 +86,7 @@ packages/
   engine/        scanning, ignore rules, config loading, watching, update pipeline
   server/        CLI, HTTP API and WebSocket
 apps/
-  web/           React UI: ELK layout, React Flow 2D view, CSS 3D city view, anime.js animation
+  web/           React UI: ELK layout, React Flow navigation, Three.js 3D city, anime.js animation
 fixtures/
   bookstore-app/ sample Next.js app used by tests and demos
 scripts/

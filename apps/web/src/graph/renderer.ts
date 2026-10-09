@@ -27,3 +27,9 @@ export interface GraphRenderer {
   ensureVisible(id: string): void;
   destroy(): void;
 }
+
+export interface CityRenderer extends GraphRenderer {
+  rotateBy(degrees: number): void;
+  toggleTilt(): void;
+  home(): void;
+}
