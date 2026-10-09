@@ -6,7 +6,19 @@
  * layer re-resolve relationships without re-parsing.
  */
 
-export type SourceLanguage = 'typescript' | 'tsx' | 'javascript' | 'jsx' | 'prisma';
+export type SourceLanguage =
+  | 'typescript'
+  | 'tsx'
+  | 'javascript'
+  | 'jsx'
+  | 'python'
+  | 'go'
+  | 'java'
+  | 'rust'
+  | 'csharp'
+  | 'php'
+  | 'ruby'
+  | 'prisma';
 
 /** A data model declared in a schema file (Prisma model, Drizzle table, ...). */
 export interface ModelFact {
@@ -16,7 +28,10 @@ export interface ModelFact {
   fields: string[];
   /** Names of other models this model references. */
   relations: string[];
-  orm: 'prisma';
+  /** 'prisma', 'django', 'sqlalchemy', 'jpa', 'activerecord', 'eloquent', 'gorm', 'efcore', 'diesel', ... */
+  orm: string;
+  /** Qualified name of the class that declares the model, when it is a class (ORM entities). */
+  symbol?: string;
 }
 
 export interface FileFacts {
@@ -26,6 +41,8 @@ export interface FileFacts {
   /** Content hash of the file. */
   hash: string;
   loc: number;
+  /** Declared package / namespace (Java package, C# or PHP namespace, Ruby module), dot-separated. */
+  namespace?: string;
   /** Top-of-file directives such as 'use client' / 'use server'. */
   directives: string[];
   imports: ImportFact[];
@@ -53,6 +70,11 @@ export interface ImportFact {
   specifiers: ImportSpecifier[];
   /** `import('./x')` or `require('./x')`. */
   dynamic?: boolean;
+  /**
+   * Brings every public name of the module into scope: Python `from x import *`,
+   * Java `import a.b.*`, C# `using A.B;`, Rust `use a::*`, Go dot-imports.
+   */
+  wildcard?: boolean;
 }
 
 export type ExportFact =
@@ -139,4 +161,6 @@ export interface RouteFact {
   scope: string;
   /** Identifiers passed as handlers / middleware. */
   handlers: string[];
+  /** Framework that registered the route; defaults to 'express'. */
+  framework?: string;
 }

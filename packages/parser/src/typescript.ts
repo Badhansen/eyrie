@@ -623,7 +623,7 @@ export class TypeScriptExtractor {
         this.withScope({ name, locals: sym.locals }, () => {
           if (fnChain) this.addRef('call', fnChain, v, this.literalArgs(args));
           for (const a of args?.namedChildren ?? []) {
-            if (!a || unwrap(a) === inner) continue;
+            if (!a || unwrap(a).equals(inner)) continue;
             this.argument(a);
           }
         });
@@ -815,7 +815,7 @@ export class TypeScriptExtractor {
       const text = nameNode.text;
       if (/^[A-Z]/.test(text) || text.includes('.')) this.addRef('jsx', text.split('.'), nameNode);
     }
-    for (const c of node.namedChildren) if (c && c !== nameNode) this.walk(c);
+    for (const c of node.namedChildren) if (c && !(nameNode && c.equals(nameNode))) this.walk(c);
   }
 
   private localDeclaration(node: Node): void {

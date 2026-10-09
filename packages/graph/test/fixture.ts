@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SourceParser } from '@eyrie/parser';
 import type { CodeNode } from '@eyrie/core';
@@ -29,7 +29,7 @@ export class FixtureRepo {
   static async load(): Promise<FixtureRepo> {
     const repo = new FixtureRepo();
     for (const abs of walk(FIXTURE_ROOT)) {
-      const rel = relative(FIXTURE_ROOT, abs);
+      const rel = relative(FIXTURE_ROOT, abs).split(sep).join('/');
       if (repo.parser.supports(rel)) repo.files.set(rel, readFileSync(abs, 'utf8'));
     }
     await repo.apply([...repo.files.keys()]);

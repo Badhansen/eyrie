@@ -23,11 +23,25 @@ export type FileRole =
   /** Only re-exports other modules (index.ts barrels). */
   | 'barrel';
 
-const REPO_DIRS = /^(repositories|repository|repos|dal|dao|data-access)$/;
+const REPO_DIRS = /^(repositories|repository|repos|dal|dao|data-access|persistence)$/;
 const SERVICE_DIRS = /^(services|service|controllers|controller|usecases|use-cases|server|handlers)$/;
-const JOB_DIRS = /^(jobs|workers|queues|cron|tasks|inngest|trigger)$/;
-const TEST_DIRS = /^(__tests__|__mocks__|tests?|e2e|cypress|playwright|fixtures?|__fixtures__|stories|storybook|mocks?)$/;
-const TEST_FILE = /\.(test|spec|stories|story|e2e|cy|bench)\.[mc]?[jt]sx?$/;
+const JOB_DIRS = /^(jobs|workers|queues|cron|tasks|inngest|trigger|consumers)$/;
+const TEST_DIRS = /^(__tests__|__mocks__|tests?|spec|e2e|cypress|playwright|fixtures?|__fixtures__|stories|storybook|mocks?|testdata)$/;
+const TEST_FILE = new RegExp(
+  [
+    String.raw`\.(test|spec|stories|story|e2e|cy|bench)\.[mc]?[jt]sx?$`,
+    String.raw`(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$`,
+    String.raw`_test\.go$`,
+    String.raw`(Tests?|IT|Spec)\.(java|cs|php)$`,
+    String.raw`_(spec|test)\.rb$`,
+  ].join('|'),
+);
+/** Any source extension: `.ts`, `.py`, `.go`, `.java`, ... */
+const SOURCE_EXT = String.raw`\.(?:[mc]?[jt]sx?|py|go|java|rs|cs|php|rb)$`;
+const REPO_FILE = new RegExp(String.raw`[._-](repository|repo|dao)` + SOURCE_EXT, 'i');
+// Celery `tasks.py` and Django `views.py` are conventions; elsewhere those names mean nothing.
+const JOB_FILE = new RegExp(String.raw`[._-](job|worker)` + SOURCE_EXT + String.raw`|^tasks\.py$`, 'i');
+const SERVICE_FILE = new RegExp(String.raw`[._-](service|controller|usecase|handler)s?` + SOURCE_EXT + String.raw`|^views\.py$`, 'i');
 const SERVICE_NAME = /(Service|Client|Gateway|Manager|Provider|Adapter|Controller|Handler|Engine|Processor)$/;
 const REPO_NAME = /(Repository|Repo|Dao|DAO)$/;
 
@@ -65,17 +79,19 @@ export function classifyFile({ path, facts, next, isClientWrapper, isSchema }: C
   const file = path.split('/').pop()!.toLowerCase();
   const exported = exportedSymbols(facts);
   // Name suffixes only count for classes and service objects, not functions like `scanRepository()`.
-  const isLogicSymbol = (s: SymbolFact) => s.kind === 'class' || s.kind === 'variable';
+  // Outside TypeScript an interface is a real component (Spring Data `interface OrderRepository`).
+  const isJs = facts.language === 'typescript' || facts.language === 'tsx' || facts.language === 'javascript' || facts.language === 'jsx';
+  const isLogicSymbol = (s: SymbolFact) => s.kind === 'class' || s.kind === 'variable' || (s.kind === 'interface' && !isJs);
 
-  if (exported.some((s) => isLogicSymbol(s) && REPO_NAME.test(s.name)) || segs.some((d) => REPO_DIRS.test(d)) || /\.(repository|repo|dao)\.[mc]?[jt]sx?$/.test(file)) {
+  if (exported.some((s) => isLogicSymbol(s) && REPO_NAME.test(s.name)) || segs.some((d) => REPO_DIRS.test(d)) || REPO_FILE.test(file)) {
     return 'repository';
   }
-  if (segs.some((d) => JOB_DIRS.test(d)) || /\.(job|worker)\.[mc]?[jt]sx?$/.test(file)) return 'job';
+  if (segs.some((d) => JOB_DIRS.test(d)) || JOB_FILE.test(file)) return 'job';
   if (exported.some((s) => s.kind === 'react_component') || (facts.language === 'tsx' || facts.language === 'jsx') && facts.symbols.some((s) => s.kind === 'react_component')) {
     return 'component';
   }
   if (exported.some((s) => s.kind === 'hook') || segs.includes('hooks')) return 'hook';
-  if (exported.some((s) => isLogicSymbol(s) && SERVICE_NAME.test(s.name)) || segs.some((d) => SERVICE_DIRS.test(d)) || /\.(service|controller|usecase)\.[mc]?[jt]sx?$/.test(file)) {
+  if (exported.some((s) => isLogicSymbol(s) && SERVICE_NAME.test(s.name)) || segs.some((d) => SERVICE_DIRS.test(d)) || SERVICE_FILE.test(file)) {
     return 'service';
   }
   return 'module';
@@ -147,7 +163,7 @@ export function categoryOf(kind: ArchKind, externalCategory?: string): ArchCateg
 
 // ── naming ─────────────────────────────────────────────────────────────────
 
-const STRUCTURAL_DIRS = new Set([
+export const STRUCTURAL_DIRS = new Set([
   'src', 'app', 'apps', 'pages', 'api', 'lib', 'libs', 'utils', 'util', 'helpers', 'components', 'component', 'ui',
   'hooks', 'services', 'service', 'server', 'client', 'shared', 'common', 'core', 'features', 'feature', 'modules',
   'module', 'repositories', 'repository', 'controllers', 'routes', 'actions', 'models', 'db', 'data', 'packages',
@@ -168,9 +184,9 @@ export function titleCase(parts: string[]): string {
 
 export function fileStem(path: string): string {
   const segs = path.split('/');
-  const stem = segs.pop()!.replace(/\.[mc]?[jt]sx?$/, '');
-  if (stem !== 'index') return stem;
-  // index.ts is named after its folder, skipping structural folders: packages/core/src/index.ts → core
+  const stem = segs.pop()!.replace(new RegExp(SOURCE_EXT), '');
+  if (!['index', '__init__', 'mod', 'lib', 'main'].includes(stem)) return stem;
+  // index.ts / __init__.py / mod.rs are named after their folder, skipping structural folders: packages/core/src/index.ts → core
   while (segs.length && ['src', 'lib', 'dist', 'source'].includes(segs[segs.length - 1]!)) segs.pop();
   return segs.pop() ?? stem;
 }
