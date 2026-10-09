@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import JSON5 from 'json5';
-import type { AliasConfig, ProjectConfig, WorkspacePackage } from '@eyrie/graph';
+import type { AliasConfig, GoModule, ProjectConfig, WorkspacePackage } from '@eyrie/graph';
 
 const toPosix = (p: string) => p.split(sep).join('/');
 const rel = (root: string, abs: string) => toPosix(relative(root, abs));
@@ -22,6 +22,50 @@ const FRAMEWORK_DEPS: Record<string, string> = {
   mongoose: 'mongoose',
   '@trpc/server': 'trpc',
 };
+
+const PY_MANIFEST = /(pyproject\.toml|requirements(-\w+)?\.txt|Pipfile)$/;
+
+/** A Python requirement, whether one per line, in a PEP 621 list or a Poetry table. */
+function pyDep(name: string): RegExp {
+  return new RegExp(`(^|["'\\s,\\[])${name}([<>=~!\\[\\s"',;\\]]|$)`, 'im');
+}
+
+/** Frameworks recognised in other ecosystems' manifests, by a dependency name found in the file. */
+const MANIFEST_FRAMEWORKS: [RegExp, RegExp, string][] = [
+  // [manifest file, dependency pattern, framework]
+  [PY_MANIFEST, pyDep('django'), 'django'],
+  [PY_MANIFEST, pyDep('flask'), 'flask'],
+  [PY_MANIFEST, pyDep('fastapi'), 'fastapi'],
+  [PY_MANIFEST, pyDep('sqlalchemy'), 'sqlalchemy'],
+  [/go\.mod$/, /github\.com\/gin-gonic\/gin\b/, 'gin'],
+  [/go\.mod$/, /github\.com\/labstack\/echo\b/, 'echo'],
+  [/go\.mod$/, /github\.com\/go-chi\/chi\b/, 'chi'],
+  [/go\.mod$/, /github\.com\/gofiber\/fiber\b/, 'fiber'],
+  [/go\.mod$/, /gorm\.io\/gorm\b/, 'gorm'],
+  [/(pom\.xml|build\.gradle(\.kts)?)$/, /spring-boot/, 'spring'],
+  [/(pom\.xml|build\.gradle(\.kts)?)$/, /io\.quarkus/, 'quarkus'],
+  [/(pom\.xml|build\.gradle(\.kts)?)$/, /io\.micronaut/, 'micronaut'],
+  [/(pom\.xml|build\.gradle(\.kts)?)$/, /hibernate|spring-boot-starter-data-jpa/, 'jpa'],
+  [/\.csproj$/, /Sdk="Microsoft\.NET\.Sdk\.Web"|Microsoft\.AspNetCore/, 'aspnet'],
+  [/\.csproj$/, /Microsoft\.EntityFrameworkCore/, 'efcore'],
+  [/composer\.json$/, /"laravel\/framework"/, 'laravel'],
+  [/composer\.json$/, /"symfony\/framework-bundle"/, 'symfony'],
+  [/Gemfile$/, /^\s*gem\s+["']rails["']/m, 'rails'],
+  [/Gemfile$/, /^\s*gem\s+["']sinatra["']/m, 'sinatra'],
+  [/Cargo\.toml$/, /^\s*axum\s*=/m, 'axum'],
+  [/Cargo\.toml$/, /^\s*actix-web\s*=/m, 'actix'],
+  [/Cargo\.toml$/, /^\s*rocket\s*=/m, 'rocket'],
+  [/Cargo\.toml$/, /^\s*diesel\s*=/m, 'diesel'],
+  [/Cargo\.toml$/, /^\s*sea-orm\s*=/m, 'sea-orm'],
+];
+
+function readText(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
 
 interface TsconfigPaths {
   baseUrl?: string;
@@ -82,7 +126,7 @@ export interface LoadedConfig {
   config: ProjectConfig;
 }
 
-/** Reads tsconfig/jsconfig path aliases, workspace packages and frameworks. */
+/** Reads tsconfig/jsconfig path aliases, workspace packages, Go modules and frameworks (from every ecosystem's manifest). */
 export function loadProjectConfig(root: string, configFiles: string[]): LoadedConfig {
   const rootPkg = readJson(join(root, 'package.json'));
   const name = (typeof rootPkg?.name === 'string' && rootPkg.name) || basename(root);
@@ -90,9 +134,23 @@ export function loadProjectConfig(root: string, configFiles: string[]): LoadedCo
   const workspaces: WorkspacePackage[] = [];
   const aliasByScope = new Map<string, AliasConfig>();
 
+  const goModules: GoModule[] = [];
+
   for (const file of configFiles) {
     const abs = join(root, file);
-    if (basename(file) === 'package.json') {
+    const base = basename(file);
+    if (base === 'go.mod') {
+      const path = /^module\s+"?([^\s"]+)"?/m.exec(readText(abs) ?? '')?.[1];
+      const dir = toPosix(dirname(file));
+      if (path) goModules.push({ dir: dir === '.' ? '' : dir, path });
+    }
+    const manifest = MANIFEST_FRAMEWORKS.filter(([pattern]) => pattern.test(base));
+    if (manifest.length) {
+      const text = readText(abs) ?? '';
+      for (const [, dep, fw] of manifest) if (dep.test(text)) frameworks.add(fw);
+      continue;
+    }
+    if (base === 'package.json') {
       const pkg = readJson(abs);
       if (!pkg) continue;
       for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
@@ -123,6 +181,7 @@ export function loadProjectConfig(root: string, configFiles: string[]): LoadedCo
       aliases: [...aliasByScope.values()],
       workspaces: workspaces.sort((a, b) => b.name.length - a.name.length),
       frameworks: [...frameworks].sort(),
+      goModules: goModules.sort((a, b) => b.path.length - a.path.length),
     },
   };
 }

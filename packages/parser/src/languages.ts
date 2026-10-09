@@ -11,6 +11,13 @@ const GRAMMARS: Record<GrammarLanguage, string> = {
   tsx: 'tree-sitter-typescript/tree-sitter-tsx.wasm',
   javascript: 'tree-sitter-javascript/tree-sitter-javascript.wasm',
   jsx: 'tree-sitter-javascript/tree-sitter-javascript.wasm',
+  python: 'tree-sitter-python/tree-sitter-python.wasm',
+  go: 'tree-sitter-go/tree-sitter-go.wasm',
+  java: 'tree-sitter-java/tree-sitter-java.wasm',
+  rust: 'tree-sitter-rust/tree-sitter-rust.wasm',
+  csharp: 'tree-sitter-c-sharp/tree-sitter-c_sharp.wasm',
+  php: 'tree-sitter-php/tree-sitter-php.wasm',
+  ruby: 'tree-sitter-ruby/tree-sitter-ruby.wasm',
 };
 
 const EXTENSIONS: Record<string, SourceLanguage> = {
@@ -22,6 +29,14 @@ const EXTENSIONS: Record<string, SourceLanguage> = {
   '.mjs': 'javascript',
   '.cjs': 'javascript',
   '.jsx': 'jsx',
+  '.py': 'python',
+  '.go': 'go',
+  '.java': 'java',
+  '.rs': 'rust',
+  '.cs': 'csharp',
+  '.php': 'php',
+  '.rb': 'ruby',
+  '.rake': 'ruby',
   '.prisma': 'prisma',
 };
 
@@ -29,8 +44,11 @@ export type { GrammarLanguage };
 
 export const SOURCE_EXTENSIONS = Object.keys(EXTENSIONS);
 
+/** Generated code that would only add noise to the graph. */
+const GENERATED = /(\.d\.[mc]?ts|\.pb\.go|_pb2(_grpc)?\.py|\.g\.cs|\.designer\.cs|\.generated\.cs|AssemblyInfo\.cs)$/i;
+
 export function detectLanguage(path: string): SourceLanguage | null {
-  if (path.endsWith('.d.ts') || path.endsWith('.d.mts') || path.endsWith('.d.cts')) return null;
+  if (GENERATED.test(path)) return null;
   const dot = path.lastIndexOf('.');
   if (dot === -1) return null;
   return EXTENSIONS[path.slice(dot).toLowerCase()] ?? null;

@@ -30,7 +30,8 @@ export const DEFAULT_IGNORED_DIRS = new Set([
 ]);
 
 const IGNORED_FILES = /(\.min\.[cm]?js|\.bundle\.js|\.d\.[cm]?ts|\.map)$/;
-const CONFIG_FILES = /(^|\/)(tsconfig(\.[\w-]+)?\.json|jsconfig\.json|package\.json)$/;
+const CONFIG_FILES =
+  /(^|\/)(tsconfig(\.[\w-]+)?\.json|jsconfig\.json|package\.json|go\.mod|pyproject\.toml|requirements(-\w+)?\.txt|Pipfile|pom\.xml|build\.gradle(\.kts)?|[\w.-]+\.csproj|composer\.json|Gemfile|Cargo\.toml)$/;
 export const MAX_FILE_BYTES = 1_000_000;
 
 export function isConfigFile(rel: string): boolean {
@@ -88,7 +89,7 @@ export interface ScannedFile {
 
 export interface ScanResult {
   sources: ScannedFile[];
-  /** tsconfig/jsconfig/package.json files (repo-relative). */
+  /** tsconfig/jsconfig/package.json and other ecosystems' manifests (repo-relative). */
   configs: string[];
 }
 

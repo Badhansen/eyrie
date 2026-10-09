@@ -1,5 +1,6 @@
 import {
   idFor,
+  keys,
   type ArchEdge,
   type ArchGraph,
   type ArchKind,
@@ -9,9 +10,10 @@ import {
   type SourceRef,
   type SymbolFact,
 } from '@eyrie/core';
-import { symbolId, type CodeGraphStore, type NextFileInfo } from '@eyrie/graph';
+import { languageOfPath, symbolId, type CodeGraphStore, type NextFileInfo } from '@eyrie/graph';
 import {
   ROLE_KIND,
+  STRUCTURAL_DIRS,
   categoryOf,
   classifyFile,
   domainOf,
@@ -59,6 +61,19 @@ interface RawEdge {
   sites: SourceRef[];
 }
 
+/** How each ORM writes its own name. */
+const ORM_LABELS: Record<string, string> = {
+  sqlalchemy: 'SQLAlchemy',
+  sqlmodel: 'SQLModel',
+  mongoengine: 'MongoEngine',
+  jpa: 'JPA',
+  efcore: 'EF Core',
+  activerecord: 'ActiveRecord',
+  gorm: 'GORM',
+  'sea-orm': 'SeaORM',
+  sqlx: 'SQLx',
+};
+
 /**
  * Derives the architecture graph: a few dozen components (pages, API
  * routes, services, models, external services) with lifted dependencies.
@@ -103,7 +118,7 @@ export function deriveArchitecture(src: ArchitectureSource): ArchGraph {
       role: 'model',
       kind: 'database_model',
       label: n.name,
-      sublabel: orm ? `${titleCase([orm])} model` : 'Data model',
+      sublabel: orm ? `${ORM_LABELS[orm] ?? titleCase([orm])} model` : 'Data model',
       domain: domainOf('', n.name),
       members: new Set([id]),
       files: new Set(n.file ? [n.file] : []),
@@ -138,10 +153,22 @@ export function deriveArchitecture(src: ArchitectureSource): ArchGraph {
     const facts = src.getFacts(path);
     if (!facts) continue;
     const next = src.nextInfo(path);
-    const nodeIds = store.nodeIdsOfFile(path).filter((id) => store.getNode(id)?.kind !== 'database_model');
+    // ORM entity classes (and their methods) belong to their model component, not the file.
+    const entityIds = claimEntities(store, path, facts, drafts, memberOf);
+    const nodeIds = store.nodeIdsOfFile(path).filter((id) => store.getNode(id)?.kind !== 'database_model' && !entityIds.has(id));
     const clientProvider = clientWrapperProvider(store, path, facts);
-    const isSchema = !!facts.models?.length || (exportedSymbols(facts).length > 0 && exportedSymbols(facts).every((s) => store.getNode(symbolId(path, s))?.kind === 'database_model'));
-    const role = classifyFile({ path, facts, next, isClientWrapper: !!clientProvider, isSchema });
+    const declaresModels = !!facts.models?.length;
+    // Schemas next to tables (pydantic beside SQLModel) keep a file a schema;
+    // functions that work with the models (Go `FindOneUser`) make it data access.
+    const queriesModels = facts.symbols.some((s) => {
+      if ((s.kind !== 'function' && s.kind !== 'method') || entityIds.has(symbolId(path, s))) return false;
+      return store.outEdges(symbolId(path, s)).some((e) => store.getNode(e.target)?.kind === 'database_model');
+    });
+    const isSchema =
+      (declaresModels && !queriesModels) ||
+      (exportedSymbols(facts).length > 0 && exportedSymbols(facts).every((s) => store.getNode(symbolId(path, s))?.kind === 'database_model'));
+    // A file that declares models and also queries them (Go `models.go`, Django managers) is data access.
+    const role = declaresModels && !isSchema && !isTestFile(path) ? 'repository' : classifyFile({ path, facts, next, isClientWrapper: !!clientProvider, isSchema });
     roles.set(path, role);
 
     if (role === 'client' && clientProvider) {
@@ -160,13 +187,18 @@ export function deriveArchitecture(src: ArchitectureSource): ArchGraph {
     add(fileDraft(store, path, facts, next, effectiveRole, nodeIds));
   }
 
+  disambiguateLabels(drafts);
+
   // ── lift code edges to component edges ──────────────────────────────────
   const raw = new Map<string, Map<string, RawEdge>>();
   for (const e of store.edges()) {
     if (!LIFTED_EDGES.has(e.kind)) continue;
-    // Using a type is not an architectural dependency (it stays in the code graph).
-    const targetKind = store.getNode(e.target)?.kind;
-    if ((targetKind === 'interface' || targetKind === 'type') && e.kind !== 'IMPLEMENTS' && e.kind !== 'EXTENDS') continue;
+    // Using a type is not an architectural dependency (it stays in the code graph),
+    // but calling through a Java / C# / Go interface is: that is how injected services are reached.
+    const target = store.getNode(e.target);
+    const targetKind = target?.kind;
+    const callsPort = e.kind === 'CALLS' && targetKind === 'interface' && !!target?.file && languageOfPath(target.file) !== 'js';
+    if ((targetKind === 'interface' || targetKind === 'type') && e.kind !== 'IMPLEMENTS' && e.kind !== 'EXTENDS' && !callsPort) continue;
     const a = memberOf.get(e.source);
     const b = memberOf.get(e.target);
     if (!a || !b || a === b) continue;
@@ -361,6 +393,65 @@ function promoteToService(d: Draft): void {
   d.kind = 'service';
 }
 
+/**
+ * Moves ORM entity classes (Django / JPA / Eloquent / ActiveRecord models,
+ * EF Core DbSet properties) and their methods into their model component,
+ * so `order.getItems()` reads as a use of the Order model. Returns the
+ * claimed node ids.
+ */
+function claimEntities(store: CodeGraphStore, path: string, facts: FileFacts, drafts: Map<string, Draft>, memberOf: Map<string, string>): Set<string> {
+  const claimed = new Set<string>();
+  for (const m of facts.models ?? []) {
+    if (!m.symbol) continue;
+    const draft = drafts.get(`arch:model:${keys.model(m.name)}`);
+    if (!draft) continue;
+    for (const s of facts.symbols) {
+      if (s.qualifiedName !== m.symbol && !s.qualifiedName.startsWith(`${m.symbol}.`)) continue;
+      const id = symbolId(path, s);
+      if (!store.hasNode(id)) continue;
+      draft.members.add(id);
+      memberOf.set(id, draft.key);
+      claimed.add(id);
+    }
+  }
+  return claimed;
+}
+
+/**
+ * Components from different features that share a name (vertical slices:
+ * `Articles/Create.cs`, `Comments/Create.cs`) are told apart by their
+ * feature folder: "Articles Create", "Comments Create".
+ */
+function disambiguateLabels(drafts: Map<string, Draft>): void {
+  const byLabel = new Map<string, Draft[]>();
+  for (const d of drafts.values()) {
+    if (d.role === 'model' || d.role === 'external' || d.role === 'missing' || d.files.size !== 1) continue;
+    byLabel.set(d.label, [...(byLabel.get(d.label) ?? []), d]);
+  }
+  for (const [label, list] of byLabel) {
+    if (list.length < 2) continue;
+    const folders = list.map((d) => featureFolder([...d.files][0]!));
+    // Only rename when the folders actually tell them apart.
+    if (folders.some((f) => !f) || new Set(folders).size !== folders.length) continue;
+    list.forEach((d, i) => {
+      const prefix = titleCase(words(folders[i]!));
+      if (!label.startsWith(prefix)) d.label = `${prefix} ${label}`;
+    });
+  }
+}
+
+/** File names that say nothing on their own: `users/routes.go` is the users routes. */
+const GENERIC_STEMS = new Set(['routes', 'routers', 'router', 'urls', 'views', 'handlers', 'handler', 'controller', 'controllers', 'models', 'model', 'service', 'services', 'repository', 'api', 'main', 'server', 'app', 'serializers', 'schemas', 'validators']);
+
+/** Nearest folder that names a feature, skipping structural ones (`src`, `internal`, ...). */
+function featureFolder(path: string): string | undefined {
+  return path
+    .split('/')
+    .slice(0, -1)
+    .reverse()
+    .find((d) => !STRUCTURAL_DIRS.has(d.toLowerCase()) && !/^[[(@.]/.test(d));
+}
+
 /** If every exported symbol is an SDK client instance, returns its provider. */
 function clientWrapperProvider(store: CodeGraphStore, path: string, facts: FileFacts): string | null {
   const exported = exportedSymbols(facts);
@@ -408,7 +499,10 @@ function fileDraft(
   role: Exclude<FileRole, 'client' | 'schema' | 'test' | 'barrel'>,
   nodeIds: string[],
 ): Draft {
-  const primary = primarySymbol(facts, role, next);
+  // Symbols claimed by another component (ORM entities) do not name or describe this file.
+  const own = new Set(nodeIds);
+  const visible: FileFacts = { ...facts, symbols: facts.symbols.filter((s) => own.has(symbolId(path, s))) };
+  const primary = primarySymbol(visible, role, next);
   const kind = ROLE_KIND[role];
   const meta: Record<string, unknown> = {};
   let label: string;
@@ -434,7 +528,10 @@ function fileDraft(
         sublabel = `${methods.join(' · ')} ${next.path}`;
         meta.route = next.path;
       } else {
-        label = `${titleCase(words(fileStem(path)))} Routes`;
+        const stem = fileStem(path);
+        const folder = GENERIC_STEMS.has(stem.toLowerCase()) ? featureFolder(path) : undefined;
+        // config/routes.rb, urls.py: just "Routes", not "Routes Routes".
+        label = !folder && /^(routes?|routers?|urls)$/i.test(stem) ? 'Routes' : `${titleCase(words(folder ?? stem))} Routes`;
         sublabel = paths.length === 1 ? `${methods.join(' · ')} ${paths[0]}` : `${paths.length} routes`;
       }
       break;
@@ -450,13 +547,17 @@ function fileDraft(
       const useSymbolName = name && name !== 'default' && (role === 'component' || role === 'hook' || primary?.kind === 'class' || SUFFIX.test(name));
       // Classes and components keep their identifier; `paymentService` reads as "Payment Service".
       if (useSymbolName) label = /^[a-z]/.test(name) && role !== 'hook' ? titleCase(words(name)) : name;
-      else label = titleCase(words(fileStem(path)));
+      else {
+        const stem = fileStem(path);
+        const folder = GENERIC_STEMS.has(stem.toLowerCase()) ? featureFolder(path) : undefined;
+        label = titleCase(words(folder ? `${folder} ${stem}` : stem));
+      }
     }
   }
 
-  const methods = primary ? facts.symbols.filter((s) => s.parent === primary.qualifiedName && s.name !== 'constructor').map((s) => s.name) : [];
-  const doc = primary?.doc ?? facts.symbols.find((s) => s.exported && s.doc)?.doc;
-  const summary = doc ?? describe(role, label, next, meta, methods, exportedSymbols(facts));
+  const methods = primary ? visible.symbols.filter((s) => s.parent === primary.qualifiedName && s.name !== 'constructor').map((s) => s.name) : [];
+  const doc = primary?.doc ?? visible.symbols.find((s) => s.exported && s.doc)?.doc;
+  const summary = doc ?? describe(role, label, next, meta, methods, exportedSymbols(visible));
   meta.summaryFrom = doc ? 'doc' : 'generated';
   if (methods.length) meta.methods ??= methods;
   meta.loc = facts.loc;
