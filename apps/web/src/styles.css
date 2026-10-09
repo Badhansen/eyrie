@@ -389,25 +389,48 @@ button:disabled {
 
 
 /* ── sequence view ─────────────────────────────────────────────────────── */
-.sequence {
-  --edge: color-mix(in oklab, var(--color-text) 22%, transparent);
-  --edge-hot: color-mix(in oklab, var(--color-text) 80%, transparent);
-}
-.seq-lifeline {
-  stroke: var(--color-rule);
-  stroke-width: 1;
-  stroke-dasharray: 2 5;
-}
-.seq-lifeline.on {
-  stroke: var(--color-rule-strong);
-  stroke-dasharray: none;
-}
-.seq-hit {
-  fill: transparent;
-  cursor: pointer;
-}
-.seq-step:hover .seq-hit {
-  fill: color-mix(in oklab, var(--color-text) 4%, transparent);
+.sequence-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; padding: 10px 20px; border-bottom: 1px solid var(--color-rule); background: var(--color-ink-1); }
+.sequence-entry { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sequence-entry label { font-size: 11px; color: var(--color-dim); white-space: nowrap; }
+.sequence-entry select { min-width: 0; max-width: 260px; height: 32px; padding: 0 8px; border: 1px solid var(--color-rule-strong); border-radius: 4px; background: var(--color-ink-0); color: var(--color-text); font-size: 12px; }
+.sequence-summary { font: 11px var(--font-mono); color: var(--color-dim); }
+.sequence-toolbar p { flex: 1; min-width: 220px; color: var(--color-faint); font-size: 11px; line-height: 16px; }
+.sequence-toolbar code { font-family: var(--font-mono); }
+.sequence-canvas { position: absolute; inset: 0; --edge: var(--color-dim); --edge-hot: var(--color-text); }
+.sequence-canvas .react-flow { --xy-background-color: var(--color-ink-0); }
+.sequence-canvas .react-flow__node { pointer-events: none; }
+.sequence-canvas .react-flow__handle { visibility: hidden; width: 1px; height: 1px; }
+.sequence-participant { position: relative; width: 180px; pointer-events: none; }
+.sequence-participant-title { display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 180px; height: 52px; padding: 8px 12px; border: 1px solid var(--color-rule-strong); border-radius: 4px; background: var(--color-ink-1); text-align: left; cursor: pointer; pointer-events: auto; }
+.sequence-participant-title strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
+.sequence-participant-title span { color: var(--c); font: 10px var(--font-mono); }
+.sequence-participant-title:hover, .sequence-participant.is-active .sequence-participant-title { border-color: var(--c); background: var(--color-ink-2); }
+.sequence-lifeline { position: absolute; top: 52px; bottom: 0; left: 50%; border-left: 1px dashed var(--color-rule-strong); }
+.sequence-participant.is-active .sequence-lifeline { border-left-style: solid; border-left-color: var(--c); }
+.sequence-message-label { position: absolute; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--color-ink-0); color: var(--color-dim); font: 11px var(--font-mono); pointer-events: auto; cursor: pointer; border-radius: 2px; }
+.sequence-message-label:hover, .sequence-message-label.is-active { color: var(--color-text); background: var(--color-ink-2); }
+.sequence-message-label.is-collapsed { opacity: 0.55; }
+.sequence-gutter { position: absolute; inset: 0 auto 0 0; z-index: 6; width: 150px; overflow: hidden; background: var(--color-ink-1); border-right: 1px solid var(--color-rule); }
+.sequence-gutter-heading { position: relative; z-index: 1; display: flex; align-items: flex-start; padding: 20px 16px; min-height: 0; overflow: hidden; background: var(--color-ink-1); color: var(--color-faint); font-size: 11px; }
+.sequence-source { position: absolute; left: 0; display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 10px; font: 10px var(--font-mono); color: var(--color-faint); }
+.sequence-source > span:first-child { width: 20px; flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.sequence-source button { display: flex; flex: 1; justify-content: flex-end; min-width: 0; color: var(--color-dim); cursor: pointer; }
+.sequence-source button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sequence-source button b { flex-shrink: 0; font-weight: 400; }
+.sequence-source button:hover { color: var(--color-text); text-decoration: underline; }
+.sequence-no-site { margin-left: auto; }
+.sequence-tools { display: flex; gap: 1px; padding: 3px; border: 1px solid var(--color-rule-strong); border-radius: 5px; background: var(--color-ink-1); margin-bottom: 30px !important; }
+.sequence-tools button { display: grid; place-items: center; width: 34px; height: 34px; color: var(--color-dim); cursor: pointer; border-radius: 3px; }
+.sequence-tools button:hover { color: var(--color-text); background: var(--color-ink-3); }
+.sequence-limit { padding: 6px 8px; border: 1px solid var(--color-rule); background: var(--color-ink-1); color: var(--color-dim); font: 10px var(--font-mono); }
+@media (max-width: 599px) {
+  .sequence-gutter { width: 110px; }
+  .sequence-source { padding: 0 6px; gap: 4px; }
+  .sequence-source > span:first-child { width: 14px; }
+  .sequence-toolbar { padding: 8px 16px; gap: 6px 12px; }
+  .sequence-entry { width: 100%; }
+  .sequence-entry select { flex: 1; max-width: none; }
+  .sequence-toolbar p { flex-basis: 100%; min-width: 0; font-size: 10px; line-height: 14px; }
 }
 .seq-line {
   stroke: var(--edge);
@@ -431,39 +454,4 @@ button:disabled {
 }
 .seq-step.collapsed {
   opacity: 0.55;
-}
-.seq-order,
-.seq-site,
-.seq-verb,
-.seq-note {
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-.seq-order {
-  fill: var(--color-faint);
-}
-.seq-site {
-  fill: var(--color-dim);
-}
-.seq-site.muted {
-  fill: var(--color-faint);
-}
-.seq-site-link {
-  cursor: pointer;
-}
-.seq-site-link:hover .seq-site,
-.seq-site-link:focus-visible .seq-site {
-  fill: var(--color-text);
-  text-decoration: underline;
-}
-.seq-verb {
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  fill: var(--color-faint);
-}
-.seq-step.hot .seq-verb {
-  fill: var(--color-dim);
-}
-.seq-note {
-  fill: var(--color-faint);
 }
