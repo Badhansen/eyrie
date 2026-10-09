@@ -28,17 +28,22 @@
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "Rare connection and access-state heading." },
       "headline": { "displayName": "Headline", "purpose": "Repository and compact view identity." },
-      "title": { "displayName": "Title", "purpose": "Graph-node labels and compact section content." },
+      "title": { "displayName": "Title", "purpose": "Compact section content." },
+      "graph-title": { "displayName": "Graph Title", "purpose": "React Flow component labels at 14px, weight 650, and 20px line height." },
+      "city-title": { "displayName": "City Title", "purpose": "Roof-aligned custom React Flow city labels at 18px, weight 650, and 24px line height in scene coordinates, using the block camera projection." },
       "body": { "displayName": "Body", "purpose": "Interface prose." },
       "label": { "displayName": "Technical Label", "purpose": "Repository identifiers and compact metadata in Fragment Mono." }
     },
     "shadows": [
-      { "name": "city-block-shadow", "value": "filter: blur(9px); background: var(--shadow)", "purpose": "Ground 3D city blocks on the perspective floor." },
-      { "name": "selected-node-glow", "value": "0 0 0 1px var(--c), 0 0 26px color-mix(in oklab, var(--c) 55%, transparent)", "purpose": "Mark the selected 3D city block." }
+      { "name": "city-block-shadow", "value": "Three.js directional-light shadow map; ShadowMaterial opacity 0.22", "purpose": "Ground real 3D city blocks with offset cast shadows." },
+      { "name": "selected-city-outline", "value": "1px solid var(--c)", "purpose": "Identify the selected custom React Flow label and its category-coloured block." }
     ],
     "motion": [
       { "name": "state-transition", "value": "160ms ease", "purpose": "Short stroke, fill, and opacity changes." },
       { "name": "component-transition", "value": "180ms ease", "purpose": "Graph-node opacity and interaction state." },
+      { "name": "city-orbit", "value": "420ms outQuart", "purpose": "Rotate or flatten the synchronized Three.js city and React Flow labels." },
+      { "name": "city-enter", "value": "360ms outQuart", "purpose": "Raise a newly observed component block." },
+      { "name": "city-exit", "value": "280ms inQuad", "purpose": "Fade and sink a removed component block." },
       { "name": "change-tick-in", "value": "420ms cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Report a newly observed save in the change tape." }
     ],
     "breakpoints": [
@@ -76,7 +81,7 @@
         "refersTo": "graph-node",
         "description": "A graph component block with category identity, label, and source path.",
         "html": "<button class=\"ds-node\" type=\"button\"><span class=\"ds-node-kind\">frontend</span><strong>TopBar</strong><code>src/components/TopBar.tsx</code></button>",
-        "css": ".ds-node { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 184px; padding: 8px 10px; border: 1px solid color-mix(in oklab, var(--color-frontend) 38%, transparent); border-radius: 7px; background: color-mix(in oklab, var(--color-frontend) 9%, var(--color-ink-2)); color: var(--color-text); text-align: left; cursor: pointer; } .ds-node:hover { border-color: color-mix(in oklab, var(--color-frontend) 75%, transparent); } .ds-node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 2px; } .ds-node strong { font: 620 13px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-node-kind, .ds-node code { color: var(--color-dim); font: 10px 'Fragment Mono', ui-monospace, monospace; } .ds-node-kind { color: var(--color-frontend); text-transform: uppercase; letter-spacing: .08em; }"
+        "css": ".ds-node { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 216px; height: 80px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--color-frontend) 28%, var(--color-rule)); border-radius: 7px; background: color-mix(in oklab, var(--color-frontend) 3%, var(--color-ink-2)); color: var(--color-text); text-align: left; cursor: pointer; } .ds-node:hover { border-color: color-mix(in oklab, var(--color-frontend) 70%, var(--color-rule)); } .ds-node:focus-visible { outline: 2px solid var(--color-frontend); outline-offset: 4px; } .ds-node strong { font: 650 14px/20px 'Archivo Variable', ui-sans-serif, sans-serif; } .ds-node-kind, .ds-node code { color: var(--color-dim); font: 10px 'Fragment Mono', ui-monospace, monospace; } .ds-node-kind { color: var(--color-frontend); }"
       },
       {
         "name": "Details Panel Header",

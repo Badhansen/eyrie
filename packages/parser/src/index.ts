@@ -16,7 +16,7 @@ export { SOURCE_EXTENSIONS, detectLanguage } from './languages.js';
 export { goPackageName } from './go.js';
 
 /** Bump whenever extraction output changes so cached facts are re-parsed. */
-export const FACTS_VERSION = '3';
+export const FACTS_VERSION = '4';
 
 /**
  * A language adapter turns one file into facts. Adding a language means

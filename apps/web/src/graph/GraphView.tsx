@@ -1,23 +1,12 @@
 import { Box, Map as MapIcon, Maximize2, Minus, Plus, RotateCcw, RotateCw, Scan } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
-import { GraphScene3D } from '../graph3d/scene3d';
 import { SequenceView } from './SequenceView';
 import { store, useStore, type Lens, type ViewMode } from '../state/store';
 import { focusSet, matches } from './analysis';
-import { GraphCanvas } from './canvas';
+import { FlowCanvas } from './FlowCanvas';
 import { computeLayout, type Layout } from './layout';
-import type { GraphRenderer, Highlight } from './renderer';
+import type { CityRenderer, GraphRenderer, Highlight } from './renderer';
 import { useLensGraph } from './useLensGraph';
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-function createRenderer(view: ViewMode, host: HTMLDivElement): GraphRenderer {
-  const onSelect = (id: string | null) => store.select(id);
-  if (view === '3d') return new GraphScene3D(host, { onSelect });
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  host.appendChild(svg);
-  return new GraphCanvas(svg, { onSelect });
-}
 
 export function GraphView() {
   const lens = useStore((s) => s.lens);
@@ -31,7 +20,7 @@ export function GraphView() {
 
 /** The architecture and data-flow lenses are the same map, drawn in 2D or 3D. */
 function MapView() {
-  const hostRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<CityRenderer | null>(null);
   const rendererRef = useRef<GraphRenderer | null>(null);
   const layoutRef = useRef<Layout | null>(null);
   const highlightRef = useRef<Highlight | null>(null);
@@ -53,21 +42,25 @@ function MapView() {
 
   // One renderer at a time; switching views rebuilds it from the current layout.
   useEffect(() => {
-    const host = hostRef.current!;
-    const renderer = createRenderer(view, host);
+    const renderer = flowRef.current;
+    if (!renderer) return;
     rendererRef.current = renderer;
     const layout = layoutRef.current;
     if (layout?.nodes.size) {
       renderer.render(layout, store.get().marks, { animate: false });
-      if (view === '2d') renderer.fit(0);
+      renderer.fit(0);
       if (highlightRef.current) renderer.setHighlight(highlightRef.current);
     }
-    const onResize = () => layoutRef.current && renderer.fit(0);
+    const onResize = () => {
+      if (!layoutRef.current) return;
+      const selected = store.get().selected;
+      if (selected) renderer.ensureVisible(selected);
+      else renderer.fit(0);
+    };
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
       renderer.destroy();
-      host.replaceChildren();
       if (rendererRef.current === renderer) rendererRef.current = null;
     };
   }, [view]);
@@ -91,7 +84,7 @@ function MapView() {
       layoutRef.current = layout;
       renderer.render(layout, store.get().marks, { animate: !first });
       // A lens shows a different slice of the repo; frame it.
-      if ((first || switched) && layout.nodes.size && store.get().view === '2d') renderer.fit(first ? 0 : 420);
+      if ((first || switched) && layout.nodes.size) renderer.fit(first ? 0 : 420);
     })();
   }, [graphVersion, nodes, edges, hidden, lens]);
 
@@ -125,11 +118,11 @@ function MapView() {
     return () => cancelAnimationFrame(id);
   }, [selected]);
 
-  const scene = () => (rendererRef.current instanceof GraphScene3D ? rendererRef.current : null);
+  const scene = () => flowRef.current;
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <div ref={hostRef} className="absolute inset-0" />
+      <FlowCanvas key={view} ref={flowRef} city={view === '3d'} onSelect={(id) => store.select(id)} />
       <div className="absolute right-3 bottom-3 flex items-end gap-2">
         {view === '3d' ? (
           <ControlGroup>

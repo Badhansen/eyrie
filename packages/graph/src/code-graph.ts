@@ -93,6 +93,7 @@ const TABLE_FACTORIES: Record<string, RegExp> = {
 };
 
 const strip = (s: string) => s.replace(/\(\)$/, '');
+const mountedPath = (prefix: string, path: string) => prefix ? `${prefix.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`.replace(/\/{2,}/g, '/') : path;
 const pascal = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const isBare = (s: string) => !s.startsWith('.') && !s.startsWith('/');
 
@@ -181,7 +182,8 @@ export function exportSignature(facts: FileFacts): string {
     return [name, s.kind, s.instanceOf, s.initCall, s.typeName, s.extends, s.fields?.map((f) => `${f.name}:${f.type ?? f.instanceOf ?? ''}`), members.get(name)];
   });
   const exportsShape = facts.exports.map(({ line: _line, ...rest }) => rest);
-  return hash53(JSON.stringify([exportsShape, shape, facts.models?.map((m) => [m.name, m.relations])]));
+  const receiverMethods = facts.language === 'go' ? facts.symbols.filter((s) => s.parent).map((s) => [s.qualifiedName, s.typeName]) : [];
+  return hash53(JSON.stringify([exportsShape, shape, receiverMethods, facts.models?.map((m) => [m.name, m.relations])]));
 }
 
 /**
@@ -209,6 +211,7 @@ export class GraphIndex {
   private modelUsers = new Set<string>();
   private appRoots = new Set<string>();
   private fileRoutes = new Map<string, RouteDesc[]>();
+  private routerMountPrefixes = new Map<string, string[]>();
   private routes: RouteDesc[] = [];
   private exportCache = new Map<string, { target: Target | null; files: string[] }>();
   private exportVisiting = new Set<string>();
@@ -288,8 +291,17 @@ export class GraphIndex {
         }
         const sig = exportSignature(facts);
         this.exportSigs.set(path, sig);
-        if (sig !== oldSig) for (const f of this.consultedBy.get(path) ?? []) affected.add(f);
+        if (sig !== oldSig) {
+          for (const f of this.consultedBy.get(path) ?? []) affected.add(f);
+          // Receiver methods can live in a different file from the imported type.
+          if (facts.language === 'go') for (const mate of this.resolver.matesOf(path)) {
+            for (const f of this.consultedBy.get(mate) ?? []) affected.add(f);
+          }
+        }
       } else if (had) {
+        if (languageOfPath(path) === 'go') for (const mate of this.resolver.matesOf(path)) {
+          for (const f of this.consultedBy.get(mate) ?? []) affected.add(f);
+        }
         this.facts.delete(path);
         this.fileSet.delete(path);
         this.exportSigs.delete(path);
@@ -309,6 +321,7 @@ export class GraphIndex {
       }
     }
 
+    this.refreshRouterMounts(changed, affected);
     for (const path of changed) this.rebuildNodes(path);
     this.refreshRoutes();
     if (this.routeSignature() !== oldRouteSig) for (const f of this.httpCallers) affected.add(f);
@@ -441,11 +454,15 @@ export class GraphIndex {
       addRoute({ method: 'ANY', path: next.path, appRoot: next.appRoot, line: defaultLocal.line, handlers: [defaultLocal.local] }, key, 'next');
     }
     for (const r of facts.routes) {
-      addRoute(
-        { method: r.method, path: r.path, appRoot: this.appRootOf(path), line: r.line, handlers: r.handlers, scope: r.scope },
-        `${keys.route(r.method, r.path)}@${path}`,
-        r.framework ?? 'express',
-      );
+      const prefixes = this.routerMountPrefixes.get(`${path}#${r.router}`) ?? [''];
+      for (const prefix of prefixes) {
+        const routePath = mountedPath(prefix, r.path);
+        addRoute(
+          { method: r.method, path: routePath, appRoot: this.appRootOf(path), line: r.line, handlers: r.handlers, scope: r.scope },
+          `${keys.route(r.method, routePath)}@${path}`,
+          r.framework ?? 'express',
+        );
+      }
     }
     this.fileRoutes.set(path, routes);
 
@@ -528,6 +545,36 @@ export class GraphIndex {
 
   private refreshRoutes(): void {
     this.routes = [...this.fileRoutes.values()].flat();
+  }
+
+  private refreshRouterMounts(changed: Set<string>, affected: Set<string>): void {
+    const incoming = new Map<string, { parent: string; prefix: string }[]>();
+    for (const [path, facts] of this.facts) {
+      for (const mount of facts.routeMounts ?? []) {
+        const ctx: Ctx = { path, facts, fileId: fileId(path), consulted: new Set(), edges: new Map() };
+        const target = this.resolveName(ctx, path, mount.target);
+        if (target?.kind !== 'symbol') continue;
+        const key = `${target.file}#${target.symbol.qualifiedName}`;
+        const list = incoming.get(key) ?? [];
+        list.push({ parent: `${path}#${mount.router}`, prefix: mount.prefix });
+        incoming.set(key, list);
+      }
+    }
+    const prefixesOf = (key: string, visiting = new Set<string>()): string[] => {
+      if (visiting.has(key)) return [];
+      const mounts = incoming.get(key);
+      if (!mounts) return [''];
+      const next = new Set(visiting).add(key);
+      return [...new Set(mounts.flatMap((mount) => prefixesOf(mount.parent, next).map((prefix) => mountedPath(prefix, mount.prefix))))].sort();
+    };
+    const prefixes = new Map([...incoming.keys()].map((key) => [key, prefixesOf(key)]));
+    for (const [path, facts] of this.facts) {
+      if (facts.routes.some((route) => {
+        const key = `${path}#${route.router}`;
+        return JSON.stringify(prefixes.get(key) ?? ['']) !== JSON.stringify(this.routerMountPrefixes.get(key) ?? ['']);
+      })) { changed.add(path); affected.add(path); }
+    }
+    this.routerMountPrefixes = prefixes;
   }
 
   private routeSignature(): string {

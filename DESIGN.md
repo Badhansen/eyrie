@@ -38,6 +38,16 @@ typography:
     fontSize: "13px"
     fontWeight: 620
     lineHeight: 1.35
+  graph-title:
+    fontFamily: "Archivo Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 650
+    lineHeight: "20px"
+  city-title:
+    fontFamily: "Archivo Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "18px"
+    fontWeight: 650
+    lineHeight: "24px"
   body:
     fontFamily: "Archivo Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "13px"
@@ -74,8 +84,9 @@ components:
     backgroundColor: "{colors.ink-2}"
     textColor: "{colors.text}"
     rounded: "{rounded.node}"
-    padding: "8px 10px"
-    width: "184px"
+    padding: "10px 12px"
+    width: "216px"
+    height: "80px"
   details-panel:
     backgroundColor: "{colors.ink-1}"
     textColor: "{colors.text}"
@@ -144,7 +155,9 @@ Both families are bundled locally through `@fontsource*`; the interface does not
 ### Hierarchy
 - **Display** (750, 20px, 1.2): The largest, rare heading in a centered connection or access state.
 - **Headline** (750, 15px, about 1.3): Repository identity and compact view headings.
-- **Title** (620, 13px, about 1.35): Graph-node labels and compact section content.
+- **Title** (620, 13px, about 1.35): Compact section content.
+- **Graph Title** (650, 14px, 20px): React Flow component labels.
+- **City Title** (650, 18px, 24px in scene coordinates): Roof-aligned React Flow labels on Three.js blocks; labels use the block camera projection and scale with scene zoom, not viewport width.
 - **Body** (400, 13px, 1.5): Explanatory copy and normal interface text.
 - **Label** (400, 10px, 1.4, uppercase where semantic): Lane names, metadata, and section labels; monospace is reserved for technical identifiers and compact metadata.
 
@@ -157,19 +170,19 @@ Archivo's width axis provides emphasis and fit: `.wide` uses 125% stretch for se
 
 The application fills the viewport height with a compact top bar, a central canvas, an optional details panel, and a change tape. The canvas absorbs available space. Opening details overlays or occupies a fixed side panel without causing the map to reflow. On narrow screens the details panel moves to the bottom; fewer lanes fit in view rather than shrinking graph nodes.
 
-The lane order is fixed product vocabulary: UI → Edge → API → Logic → Data → External. A lane ruler identifies off-screen lanes and changed components. The 2D node width is 184px; the 3D block uses the same width and a 52px floor depth. Fitting the 2D map never reduces scale below 0.85, preserving node-label readability while allowing the user to pan across wide maps. The 3D scene uses a 2300px perspective with its origin at 50% 32%.
+The lane order is fixed product vocabulary: UI → Edge → API → Logic → Data → External. React Flow owns both viewports, accessible component interactions, and pannable minimaps; ELK remains the shared layout and routing authority. A 2D lane ruler identifies off-screen lanes and changed components, with arrow controls to reveal each lane. The 2D nodes and 3D floors are 216px wide and 80px deep. Fitting the 2D map never reduces scale below 0.85. The 3D overview fits projected bounds on desktop, while narrow views retain a 0.85 minimum for inspection. The minimap recedes on narrow screens, and the mobile inspector reserves room for the selected node. Three.js draws a full-bleed orthographic city at a default yaw of -28 degrees and elevation of 52 degrees. The WebGL camera and React Flow labels share one projection and viewport transform, so pan, zoom, and orbit remain aligned.
 
-Controls and dividers use compact, measured spacing: the top bar has 16px horizontal padding, the details panel uses 20px internal padding, and graph nodes use 6–13px internal offsets. The canvas owns pan and zoom; it has no page-level scroll. `F` fits the graph at any viewport size.
+Controls and dividers use compact, measured spacing: the top bar has 16px horizontal padding, the details panel uses 20px internal padding, and React Flow nodes use 10px vertical and 12px horizontal padding with a 3px content gap. The canvas owns pan and zoom; it has no page-level scroll. `F` fits the graph at any viewport size.
 
 ## Elevation & Depth
 
-Depth is conveyed first by tonal surface shifts and thin borders, not broad drop shadows. The 2D map stays visually flat; selection adds a category-coloured outline and restrained glow. Shadows have a structural role in the 3D city, where blocks sit on a perspective floor. In light mode the city shadow is softened. Avoid adding ambient shadows to ordinary chrome.
+Depth is conveyed first by tonal surface shifts and thin borders, not broad drop shadows. The 2D map stays visually flat; selection adds a category-coloured outline and surface tint. Three.js gives the city actual extruded geometry, directional lighting, restrained cast shadows, and floor-level dependency tracks with proper block occlusion. Floor and lane materials retain their exact theme tokens; lighting affects blocks rather than bleaching the canvas. Selection strengthens the block tint and outline. Avoid adding ambient shadows to ordinary chrome.
 
 **The Tonal-First Rule.** Use surface tone and a one-pixel rule to separate ordinary layers. Reserve shadows and glow for the 3D model or a selected graph element.
 
 ## Shapes
 
-The form language is compact and technical. Badges and ticks use 2px corners; graph nodes and 3D block tops use 7px; panel and overlay silhouettes use 12–14px; dots are circular. Controls may use 4–6px corners, while category filters and connection-status indicators are intentionally pill-shaped. Hairline borders carry most container definition. The 3D block's 3px category accent is an intentional semantic marker shared with the 2D node identity. Do not round every surface to the same radius.
+The form language is compact and technical. Badges and ticks use 2px corners; 2D graph nodes use 7px; the mobile details panel uses 8px top corners; overlay silhouettes use 12–14px; dots are circular. Controls may use 4–6px corners, while category filters and connection-status indicators are intentionally pill-shaped. Three.js city blocks use crisp geometry and category-coloured outlines. Their roof-aligned custom React Flow labels are unframed by default, with a restrained neutral surface on hover or selection and 3px corners. Do not round every surface to the same radius.
 
 ## Components
 
@@ -179,23 +192,27 @@ Controls are precise and restrained; the category colour carries graph state. Le
 
 ### Chips
 
-Category filters are compact outlined pills with a semantic swatch, a short label, and a monospace count. Enabled filters use a quiet ink surface; disabled filters use a dashed border and an outlined swatch. Keep category names paired with colour.
+Category filters in the navbar are compact, unframed swatch controls with a short label and a monospace count. Hover reveals a restrained surface and rule; disabled filters use a dashed border and an outlined swatch. Keep category names paired with colour.
 
 ### Cards / Containers
 
-The details panel is an unshadowed `ink-1` surface with a one-pixel rule at its edge. On desktop it is 384px wide; on narrow viewports it sits at the bottom with a 68vh maximum height and a 12px top radius. Sections remain in stable order so the user can scan purpose, source, calls, dependents, and symbols.
+The details panel is an unshadowed `ink-1` surface with a one-pixel rule at its edge. On desktop it is 384px wide; on narrow viewports it sits at the bottom with an 8px top radius and a maximum height of `min(60dvh, calc(100dvh - 340px))`, preserving canvas space above the inspector. Sections remain in stable order so the user can scan purpose, source, calls, dependents, and symbols.
 
 ### Inputs / Fields
 
-Search is a 32px-high `ink-0` field with a quiet rule, a left-aligned search icon, and a trailing shortcut or result count. Focus changes the border to the stronger rule while retaining the global focus-visible outline. Keep the input label accessible even when the placeholder is visible.
+Navbar search is a 38px-high `ink-0` field (34px on mobile) with a quiet rule, a left-aligned search icon, and a trailing result count and clear action when populated. Focus changes the border to the stronger rule while retaining the global focus-visible outline. Keep the input label accessible even when the placeholder is visible.
 
 ### Navigation
 
-The top bar holds repository identity, the three lens options, search, category filters, and live status. It uses a one-pixel bottom rule and `ink-1` background. On narrow screens, controls wrap beneath repository identity and category filters can scroll horizontally.
+The top bar uses two deliberate rows: repository identity, labeled lens options, search, and live status on the `ink-1` primary row; framework and source counts alongside category filters on the quieter `ink-0` context row. One-pixel rules divide the rows and canvas. Intermediate widths place lenses and search beneath identity; mobile stacks labeled lenses and search, hides secondary repository counts, and lets category filters scroll horizontally. Lens radios use one tab stop with arrow-key navigation.
+
+### Sequence Canvas
+
+The Sequence lens uses React Flow with fixed 180px participant headers on 220px column tracks and 48px message rows. Lifeline nodes and ordered message ports preserve source order; the 150px source gutter (110px on mobile) stays pinned horizontally and tracks viewport pan and zoom vertically. Participant headers and message labels open the component inspector; file-and-line buttons open the editor. Read/write/HTTP meanings retain the semantic edge vocabulary. Pan, zoom, fit, and reset are available without making the trace editable. Keep the static-order caveat visible on every viewport.
 
 ### Architecture Nodes
 
-Nodes are the signature component and the main visual content. Each is 184px wide with a 7px radius, an `ink-2` body, a restrained category-tinted fill and border, a sans-serif component label, and a monospace path or route. Selection strengthens the category border and surface tint; broken references use a red dashed border. In the 3D city, block height encodes lines of code and has no second meaning.
+Nodes are the signature component and the main visual content. Each 2D node is 216px wide with a 7px radius, an `ink-2` body, a restrained category-tinted fill and border, a sans-serif component label, and a monospace path or route. The React Flow node adds a category-coloured kind icon and a separate change glyph, preserving the distinction between category and change state. Selection strengthens the category border and surface tint; broken references use a red dashed border. City labels occupy a stable 216px by 68px scene-space box on the projected block roof, with 4px vertical and 10px horizontal padding. Their lettering and focus outlines share the roof-plane transform, reversing orientation on the far side to remain reader-facing. Blocks retain the established source-backed height function, including special heights for data models, external services, and broken references. New blocks rise briefly; removed blocks fade and sink with their removed glyph before disappearing. There is no ambient camera motion. WebGL failure keeps accessible labels and provides a 2D recovery action.
 
 ### Edges and Change Tape
 

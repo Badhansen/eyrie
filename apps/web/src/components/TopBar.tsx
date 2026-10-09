@@ -1,4 +1,4 @@
-import { Database, ListOrdered, Map as MapIcon, Search, X } from 'lucide-react';
+import { Database, GitBranch, ListOrdered, Map as MapIcon, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import type { ArchCategory } from '@eyrie/core';
 import { matches } from '../graph/analysis';
@@ -18,32 +18,33 @@ export function TopBar() {
   }, [nodes]);
 
   return (
-    <header className="eyrie-topbar flex min-h-12 flex-wrap items-center gap-x-5 gap-y-2 border-b border-rule bg-ink-1 px-4 py-2">
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
-        <span className="font-mono text-[10px] tracking-[0.18em] text-faint uppercase">Eyrie</span>
-        <h1 className="wide min-w-0 truncate text-[15px] font-[750] tracking-tight">{repo?.name ?? 'Connecting…'}</h1>
-        {repo?.frameworks.length ? <span className="hidden font-mono text-[11px] text-faint md:inline">{repo.frameworks.join(' · ')}</span> : null}
-        <span className="ml-auto sm:hidden">
-          <LiveStatus />
-        </span>
-      </div>
-
-      {stats ? (
-        <dl className="hidden items-baseline gap-4 font-mono text-[11px] text-dim lg:flex">
-          <Stat label="files" value={stats.files} />
-          <Stat label="symbols" value={stats.symbols} />
-          <Stat label="components" value={nodes.length} />
-          <Stat label="links" value={edges.length} />
-        </dl>
-      ) : null}
-
-      <div className="flex w-full min-w-0 flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+    <header className="eyrie-topbar">
+      <div className="navbar-primary">
+        <div className="navbar-identity">
+          <span className="navbar-brand">Eyrie</span>
+          <span className="navbar-divider" aria-hidden="true" />
+          <GitBranch size={15} className="navbar-repo-icon" aria-hidden="true" />
+          <h1 title={repo?.name}>{repo?.name ?? 'Connecting…'}</h1>
+        </div>
         <LensSwitch />
-        <SearchBox />
-        <Filters present={present} />
-        <span className="hidden sm:block">
+        <div className="navbar-tools">
+          <SearchBox />
           <LiveStatus />
-        </span>
+        </div>
+      </div>
+      <div className="navbar-context">
+        <div className="navbar-repo-context">
+          {repo?.frameworks.length ? <span className="navbar-frameworks">{repo.frameworks.join(' · ')}</span> : null}
+          {stats ? (
+            <dl className="navbar-stats">
+              <Stat label="files" value={stats.files} />
+              <Stat label="symbols" value={stats.symbols} />
+              <Stat label="components" value={nodes.length} />
+              <Stat label="links" value={edges.length} />
+            </dl>
+          ) : null}
+        </div>
+        <Filters present={present} />
       </div>
     </header>
   );
@@ -51,8 +52,8 @@ export function TopBar() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <dd className="text-text tabular-nums">{value.toLocaleString()}</dd>
+    <div>
+      <dd>{value.toLocaleString()}</dd>
       <dt>{label}</dt>
     </div>
   );
@@ -67,19 +68,29 @@ const LENS_OPTIONS: { value: Lens; label: string; icon: React.ReactNode; hint: s
 function LensSwitch() {
   const lens = useStore((s) => s.lens);
   return (
-    <div role="radiogroup" aria-label="Lens" className="flex shrink-0 overflow-hidden rounded-md border border-rule bg-ink-0 p-0.5">
+    <div role="radiogroup" aria-label="Lens" className="navbar-lenses">
       {LENS_OPTIONS.map((o) => (
         <button
           key={o.value}
           type="button"
           role="radio"
+          aria-label={o.label}
           aria-checked={lens === o.value}
+          tabIndex={lens === o.value ? 0 : -1}
           title={`${o.hint} (${o.key})`}
           onClick={() => store.setLens(o.value)}
-          className={`lens-option flex h-8 items-center gap-1.5 rounded px-2.5 text-[11.5px] whitespace-nowrap transition-colors ${lens === o.value ? 'bg-ink-3 text-text' : 'text-dim hover:text-text'}`}
+          onKeyDown={(event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const index = LENS_OPTIONS.findIndex((option) => option.value === lens);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? LENS_OPTIONS.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + LENS_OPTIONS.length) % LENS_OPTIONS.length;
+            store.setLens(LENS_OPTIONS[next]!.value);
+            (event.currentTarget.parentElement?.children[next] as HTMLButtonElement)?.focus();
+          }}
+          className="lens-option"
         >
           {o.icon}
-          <span className="hidden lg:inline">{o.label}</span>
+          <span>{o.label}</span>
         </button>
       ))}
     </div>
@@ -106,8 +117,8 @@ function SearchBox() {
   }, []);
 
   return (
-    <div className="relative flex items-center">
-      <Search size={13} className="pointer-events-none absolute left-2.5 text-faint" />
+    <div className="navbar-search" data-searching={!!query}>
+      <Search size={15} className="navbar-search-icon" aria-hidden="true" />
       <input
         ref={ref}
         value={query}
@@ -124,17 +135,11 @@ function SearchBox() {
         }}
         placeholder="Find a component or file"
         aria-label="Search components"
-        className="search-field h-8 w-full rounded-md border sm:w-72 border-rule bg-ink-0 pr-24 pl-8 text-[12.5px] text-text placeholder:text-faint focus:border-rule-strong"
+        className="search-field"
       />
-      <span className={`pointer-events-none absolute font-mono text-[10px] text-faint ${query ? 'right-8' : 'right-2'}`}>
-        {query ? (
-          `${results.length} found`
-        ) : (
-          <kbd className="rounded border border-rule px-1 py-px">⌘K</kbd>
-        )}
-      </span>
+      {query ? <span className="navbar-search-count" role="status">{results.length} found</span> : null}
       {query ? (
-        <button type="button" aria-label="Clear search" onClick={() => store.setQuery('')} className="absolute right-1.5 grid h-6 w-6 place-items-center rounded text-faint hover:bg-ink-3 hover:text-text">
+        <button type="button" aria-label="Clear search" title="Clear search" onClick={() => { store.setQuery(''); ref.current?.focus(); }} className="navbar-search-clear">
           <X size={13} />
         </button>
       ) : null}
@@ -145,7 +150,7 @@ function SearchBox() {
 function Filters({ present }: { present: { cat: ArchCategory; count: number }[] }) {
   const hidden = useStore((s) => s.hidden);
   return (
-    <div role="group" aria-label="Show categories" className="scroll-thin -mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+    <div role="group" aria-label="Show categories" className="navbar-filters scroll-thin">
       {present.map(({ cat, count }) => {
         const on = !hidden.has(cat);
         return (
@@ -155,13 +160,11 @@ function Filters({ present }: { present: { cat: ArchCategory; count: number }[] 
             aria-pressed={on}
             onClick={() => store.toggleCategory(cat)}
             title={on ? `Hide ${CATEGORY_LABEL[cat]}` : `Show ${CATEGORY_LABEL[cat]}`}
-            className={`cat-${cat} category-filter flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] transition-colors ${
-              on ? 'border-rule bg-ink-2 text-text hover:border-rule-strong' : 'border-dashed border-rule text-faint hover:text-dim'
-            }`}
+            className={`cat-${cat} category-filter`}
           >
-            <span className="h-2 w-2 rounded-full" style={{ background: on ? 'var(--c)' : 'transparent', boxShadow: on ? 'none' : 'inset 0 0 0 1px var(--c)' }} />
+            <span className="category-swatch" aria-hidden="true" />
             {CATEGORY_LABEL[cat]}
-            <span className="font-mono text-[10px] text-faint">{count}</span>
+            <span className="category-count">{count}</span>
           </button>
         );
       })}
@@ -180,7 +183,7 @@ function LiveStatus() {
   const status = useStore((s) => s.status);
   const color = status === 'live' ? 'var(--color-new)' : status === 'unauthorized' ? 'var(--color-removed)' : 'var(--color-modified)';
   return (
-    <div className="flex items-center gap-2 rounded-full border border-rule px-2.5 py-1 font-mono text-[11px] text-dim" role="status" aria-live="polite">
+    <div className="navbar-status" role="status" aria-live="polite">
       <span className={`h-1.5 w-1.5 rounded-full ${status === 'live' ? 'live-dot' : ''}`} style={{ background: color }} />
       {STATUS_COPY[status]}
     </div>
