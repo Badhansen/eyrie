@@ -192,7 +192,7 @@ Controls are precise and restrained; the category colour carries graph state. Le
 
 ### Chips
 
-Category filters are compact outlined pills with a semantic swatch, a short label, and a monospace count. Enabled filters use a quiet ink surface; disabled filters use a dashed border and an outlined swatch. Keep category names paired with colour.
+Category filters in the navbar are compact, unframed swatch controls with a short label and a monospace count. Hover reveals a restrained surface and rule; disabled filters use a dashed border and an outlined swatch. Keep category names paired with colour.
 
 ### Cards / Containers
 
@@ -200,11 +200,11 @@ The details panel is an unshadowed `ink-1` surface with a one-pixel rule at its 
 
 ### Inputs / Fields
 
-Search is a 32px-high `ink-0` field with a quiet rule, a left-aligned search icon, and a trailing shortcut or result count. Focus changes the border to the stronger rule while retaining the global focus-visible outline. Keep the input label accessible even when the placeholder is visible.
+Navbar search is a 38px-high `ink-0` field (34px on mobile) with a quiet rule, a left-aligned search icon, and a trailing result count and clear action when populated. Focus changes the border to the stronger rule while retaining the global focus-visible outline. Keep the input label accessible even when the placeholder is visible.
 
 ### Navigation
 
-The top bar holds repository identity, the three lens options, search, category filters, and live status. It uses a one-pixel bottom rule and `ink-1` background. On narrow screens, controls wrap beneath repository identity and category filters can scroll horizontally.
+The top bar uses two deliberate rows: repository identity, labeled lens options, search, and live status on the `ink-1` primary row; framework and source counts alongside category filters on the quieter `ink-0` context row. One-pixel rules divide the rows and canvas. Intermediate widths place lenses and search beneath identity; mobile stacks labeled lenses and search, hides secondary repository counts, and lets category filters scroll horizontally. Lens radios use one tab stop with arrow-key navigation.
 
 ### Architecture Nodes
 
