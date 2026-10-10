@@ -4,7 +4,7 @@
 | --- | --- |
 | Product | Eyrie — local-first live architecture map for codebases |
 | Owner / reviewer | Badhan Sen |
-| Status | **Hold** — not ready for public launch; 8 actions open |
+| Status | **Hold** — not ready for public launch; 2 actions open (10, 11). Actions 1, 4, 6, 8, 12 and 15 closed 2026-10-10 |
 | Review date | 2026-10-08 |
 | Answers | Is this safe and honest to put in front of real users? |
 | Basis | A 20-point pre-launch review across policies, data and privacy, accessibility, claims and ownership, and third-party services |
@@ -39,11 +39,13 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 1. Identify the Business and Applicable Rules
 
-- [ ] Review completed. · **Status: Action needed**
+- [x] Review completed. · **Status: Pass** (closed 2026-10-10)
 
 **Finding.** No operator is identified anywhere. `README.md` describes the software but names no person or entity, gives no contact route, and the repository has no `SECURITY.md` or `CONTRIBUTING.md`. For a source-only hobby distribution this is survivable; the moment there is a landing page, a published binary, or a donation link, an unidentified operator becomes a real problem.
 
 **Action.** Decide whether Eyrie is a personal project or a business undertaking, then publish the operator name and a working contact route in `README.md`. Revisit if a desktop build (Phase D) is ever distributed, since distributing executables changes the relationship with users.
+
+**Resolution (2026-10-10).** Eyrie is a personal open-source project. `README.md` names the maintainer, Badhan Sen ([@Badhansen](https://github.com/Badhansen)), under *Contributing and support*, with GitHub issues as the contact route; `SECURITY.md` and `CODE_OF_CONDUCT.md` add a private one.
 
 ### 2. Publish Appropriate Customer Terms
 
@@ -63,11 +65,13 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 4. Provide Support and Complaint Routes
 
-- [ ] Review completed. · **Status: Action needed**
+- [x] Review completed. · **Status: Pass** (closed 2026-10-10)
 
 **Finding.** There is no published support route, issue-reporting route, or complaint route. `README.md` ends at licensing. A tool that opens a local HTTP server and reads source files needs a route for reporting problems — particularly security problems — even with no commercial relationship.
 
 **Action.** Publish a support route (issue tracker link at minimum) and a security-reporting route in `SECURITY.md`, with the owner named. This single action also closes items 8 and 12.
+
+**Resolution (2026-10-10).** GitHub issues are the support route, with bug and feature templates under `.github/ISSUE_TEMPLATE/`; blank issues are off and the chooser points security reports to a private advisory. `SECURITY.md` names the owner, a private reporting route (GitHub private vulnerability reporting, or email) and response times. `CONTRIBUTING.md` describes how to propose changes.
 
 ---
 
@@ -93,11 +97,13 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 6. Publish an Accurate Privacy Notice
 
-- [ ] Review completed. · **Status: Action needed (proportionate)**
+- [x] Review completed. · **Status: Pass** (closed 2026-10-10)
 
 **Finding.** There is no privacy notice. `README.md` has a "Privacy and security" section that accurately describes behaviour (local only, no network requests, bound to `127.0.0.1`, token required, source endpoint index-only, cache location). For a locally-run tool collecting nothing, that is close to proportionate — but it is framed as a feature list, not as a statement of what is and is not collected.
 
 **Action.** Add a short, explicit statement — "Eyrie collects no personal data and makes no network requests; the only data stored is a local analysis cache at `~/.eyrie`, which you can delete at any time" — to `README.md`. A full notice becomes necessary only if a website or distributed binary appears.
+
+**Resolution (2026-10-10).** `README.md` *Privacy and security* now opens with that statement, and says how to delete the cache.
 
 ### 7. Set Retention and Deletion Rules
 
@@ -107,13 +113,15 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 8. Prepare for Privacy Requests and Incidents
 
-- [ ] Review completed. · **Status: Action needed**
+- [x] Review completed. · **Status: Pass** (closed 2026-10-10)
 
 **Finding.** No access/deletion request route is needed — there is no personal data held and the user already has unilateral deletion by removing a directory. But there is **no vulnerability-reporting route**, and this product has a security surface worth taking seriously: it binds a local HTTP server, serves source file contents over it, and spawns an editor process.
 
 The existing protections are genuinely good and worth stating as the baseline an incident process would defend: random per-run token on every `/api/*` request and on the WebSocket upgrade; `127.0.0.1` bind; `Host`-header allowlist as DNS-rebinding protection; `/api/source` restricted to indexed files; `.gitignore`/`.eyrieignore` honoured so secrets are never parsed; 64 KB body cap; id pattern matching; path normalisation on static serving.
 
 **Action.** Add `SECURITY.md` with a reporting route, an expected response time, and the named owner. Covered by action 4.
+
+**Resolution (2026-10-10).** `SECURITY.md` added: private reporting route, acknowledgement within 7 days, assessment within 30, named owner, and a scope that lists the protections above as what reports should test.
 
 ---
 
@@ -180,13 +188,15 @@ Three real gaps:
 
 ### 12. Make Forms and Media Usable
 
-- [x] Review completed. · **Status: Pass, with one action carried from item 4**
+- [x] Review completed. · **Status: Pass** (route published 2026-10-10)
 
 **Finding.** There is almost no form surface: one search input, which is labelled, opens on `⌘K` / `/`, takes `Enter` for the first result and `Esc` to close, and has an empty state. There is no sign-in, no checkout, no validation to recover from, no CAPTCHA, no time limit, and no audio or video needing captions.
 
 **Motion is properly controlled** — the one accessibility-relevant media concern here. `@media (prefers-reduced-motion: reduce)` disables transitions in CSS, *and* the JS checks `matchMedia('(prefers-reduced-motion: reduce)')` in `graph/effects.ts` and `graph/canvas.ts` so programmatic animation is skipped too. Nothing loops or autoplays.
 
 **Action.** Publish an accessibility-problem reporting route — the same contact added for item 4. An accessibility statement becomes appropriate if a public website appears.
+
+**Resolution (2026-10-10).** Accessibility problems are reported through GitHub issues, the route published for item 4.
 
 ---
 
@@ -222,7 +232,7 @@ No invented numbers, no unsupported guarantees, no certification claims, no comp
 
 ### 15. Confirm Rights to Content, Code and Branding
 
-- [ ] Review completed. · **Status: Action needed · one point Needs specialist review**
+- [x] Review completed. · **Status: Pass for source distribution** (closed 2026-10-10) · **Needs specialist review before binary distribution**
 
 **Dependency licence inventory** (runtime and build, from the installed tree):
 
@@ -243,6 +253,8 @@ Three findings:
 **Clean, deliberately.** `fixtures/bookstore-app` is hand-written for this project, so no third-party code is vendored. The smoke-test target (`accretence/next-prisma-tailwind-ecommerce`, MIT) is cloned at developer request into the git-ignored `.smoke/` and never committed — `scripts/fetch-smoke-repo.sh` documents that this is specifically to avoid carrying third-party code and licence obligations. That is the right call and should not be undone.
 
 **Actions.** Add `THIRD-PARTY-NOTICES.md` covering all of the above, with the full OFL-1.1 text and font copyright lines, and ensure it ships with any built artefact. State the `elkjs` GPL election in it. Consider trademark clearance only if the name becomes commercially important.
+
+**Resolution (2026-10-10).** `THIRD-PARTY-NOTICES.md` added at the repository root. It lists every package that is bundled into the UI or loaded by the engine, with its licence and copyright line, carries the full MIT, ISC, BSD-3-Clause and OFL-1.1 texts and both font copyright lines, and states that `elkjs` is used under its GPL-3.0-or-later option. The web build copies `LICENSE` and `THIRD-PARTY-NOTICES.md` into `apps/web/dist`, so they ship with the built UI. The dependency inventory above predates the move from D3 to React Flow and Three.js; the notices file is the current list. The specialist question on the `elkjs` election still stands before any binary distribution.
 
 ### 16. Explain Product Limits and AI Involvement
 
@@ -308,49 +320,47 @@ Developer-time dependencies only, touching no user data: the npm registry (insta
 
 | Item | Status | Finding or evidence | Required action | Owner | Due |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Action needed | No operator identity or contact published | Publish operator + contact in `README.md` | Badhan Sen | Before public launch |
+| 1 | **Pass** | Maintainer and contact route published in `README.md` | Done 2026-10-10 | Badhan Sen | — |
 | 2 | Not applicable | No service offered; AGPL `LICENSE` governs use | None — revisit if hosted or paid | Badhan Sen | On scope change |
 | 3 | Not applicable | Nothing is sold | None | Badhan Sen | On scope change |
-| 4 | Action needed | No support or security-reporting route | Add issue route + `SECURITY.md` | Badhan Sen | Before public launch |
+| 4 | **Pass** | Issues with templates; `SECURITY.md`; `CONTRIBUTING.md` | Done 2026-10-10 | Badhan Sen | — |
 | 5 | **Pass** | No personal data; zero network egress verified by inspection | Re-verify at Phase 5 | Badhan Sen | At Phase 5 |
-| 6 | Action needed | Behaviour described, but no explicit "we collect nothing" statement | Add one paragraph to `README.md` | Badhan Sen | Before public launch |
+| 6 | **Pass** | Explicit no-collection statement in `README.md` | Done 2026-10-10 | Badhan Sen | — |
 | 7 | **Pass** | Retention/deletion specified in Backend Schema §9; cache disposable | None | Badhan Sen | — |
-| 8 | Action needed | No vulnerability-reporting route for a product that serves source locally | `SECURITY.md` (same as action 4) | Badhan Sen | Before public launch |
+| 8 | **Pass** | `SECURITY.md` with private route, response times and scope | Done 2026-10-10 | Badhan Sen | — |
 | 9 | Pass w/ follow-up | Full keyboard parity; nodes focusable with Enter/Space; focus ring 8.00:1 / 4.30:1 | Check 3D keyboard trap and focus order after live update | Badhan Sen | Next UI change |
 | 10 | Action needed | Good roles and names, but never tested with a screen reader; relationships visual only | Run VoiceOver + NVDA; decide on `role="application"` | Badhan Sen | Before public launch |
 | 11 | Action needed | `--color-faint` 2.89–3.61:1 as 9.5–10px text; light `api` kind 4.46:1 | Fix both tokens; decide on `px` → `rem` | Badhan Sen | Before public launch |
-| 12 | Pass | Minimal form surface, labelled; reduced motion honoured in CSS **and** JS | Publish a11y-problem route (action 4) | Badhan Sen | Before public launch |
+| 12 | Pass | Minimal form surface, labelled; reduced motion honoured in CSS **and** JS; issues route published | None | Badhan Sen | — |
 | 13 | Pass w/ action | Every security and privacy claim verified; "20–50 components" unevidenced | Measure or soften that one claim | Badhan Sen | Before public launch |
 | 14 | Not applicable | No reviews, testimonials or endorsements | None | Badhan Sen | On scope change |
-| 15 | **Action needed** + specialist | `elkjs` EPL-2.0/GPL-3.0 dual licence vs AGPL; OFL fonts bundled with no notice file | Add `THIRD-PARTY-NOTICES.md`; state GPL election; adviser to confirm before binary distribution | Badhan Sen | Before any distribution |
+| 15 | **Pass** (source) + specialist | `THIRD-PARTY-NOTICES.md` added and shipped in the UI build; `elkjs` GPL election stated | Adviser to confirm the `elkjs` election before binary distribution | Badhan Sen | Before Phase D |
 | 16 | **Pass** | Known limitations explicit and candid; no AI today; no UGC | Update disclosures at Phase 5 | Badhan Sen | At Phase 5 |
 | 17 | **Pass** | Two first-party functional `localStorage` keys; nothing else | None | Badhan Sen | On any new dependency |
 | 18 | Not applicable | Nothing present that requires consent or opt-out | None | Badhan Sen | On scope change |
 | 19 | **Pass** | No runtime providers; no transfers; no processing agreements needed | Revisit at Phase 5 | Badhan Sen | At Phase 5 |
 | 20 | Not applicable | No marketing messages or contact collection | None | Badhan Sen | On scope change |
 
-**Totals:** 8 Pass (incl. 2 with follow-up actions) · 7 Action needed (1 also Needs specialist review) · 6 Not applicable, each with a stated reason and reactivation trigger.
+**Totals (2026-10-10):** 13 Pass (incl. 2 with follow-up actions, and item 15 pending specialist review before binary distribution) · 2 Action needed (10, 11) · 5 Not applicable, each with a stated reason and reactivation trigger.
 
 ## Launch Decision Record
 
 **Decision: Hold.**
 
-Not because anything here is dangerous — the privacy and security posture is genuinely strong, and better than most tools of this kind — but because a public launch would currently ship an unidentified operator, no way to report a security problem, text that fails AA contrast at the smallest sizes, and a bundle containing OFL-licensed fonts without their licence notice. All four are small, concrete fixes.
+Not because anything here is dangerous — the privacy and security posture is genuinely strong, and better than most tools of this kind — but because a public launch would currently ship text that fails AA contrast at the smallest sizes, and a UI that has never been tried with a screen reader. The operator, support, security-reporting, privacy-statement and licence-notice gaps found on 2026-10-08 were closed on 2026-10-10.
 
 **Unresolved issues and their effect on launch**
 
 | Blocks a public launch | Blocks distributing a binary | Does not block |
 | --- | --- | --- |
-| 1 — operator identity and contact | 15 — `THIRD-PARTY-NOTICES.md` and the `elkjs` licence election | 9 follow-ups — 3D keyboard trap, focus order |
-| 4 / 8 — support and `SECURITY.md` | | 11c — `px` → `rem` decision |
-| 6 — explicit no-collection statement | | 13 — softening the "20–50 components" estimate |
-| 10 — one screen-reader pass | | |
-| 11a / 11b — `--color-faint` and light `--color-api` | | |
+| 10 — one screen-reader pass | 15 — specialist confirmation of the `elkjs` licence election | 9 follow-ups — 3D keyboard trap, focus order |
+| 11a / 11b — `--color-faint` and light `--color-api` | | 11c — `px` → `rem` decision |
+| | | 13 — softening the "20–50 components" estimate |
 
 **Specialist advice obtained:** none.
 **Specialist advice still required:** item 15 — whether AGPL-3.0-only + `elkjs` under its GPL-3.0-or-later option is sound for a distributed combined artefact. Worth asking once, before Phase D, not now.
 
-**Shortest path off Hold.** Five commits: `SECURITY.md` + contact and operator in `README.md` (closes 1, 4, 8, 12) · one paragraph on data collection (closes 6) · two token fixes (closes 11a, 11b) · `THIRD-PARTY-NOTICES.md` (closes 15's action half) · one VoiceOver pass with findings recorded (closes 10). Nothing here requires a lawyer or a redesign.
+**Shortest path off Hold.** Two commits remain: two token fixes (closes 11a, 11b) · one VoiceOver pass with findings recorded (closes 10). Done on 2026-10-10: `SECURITY.md` + contact and operator in `README.md` (closed 1, 4, 8, 12) · one paragraph on data collection (closed 6) · `THIRD-PARTY-NOTICES.md` (closed 15's action half).
 
 **Responsible decision-maker and date:** Badhan Sen, 2026-10-08.
 **Next review date:** before any public launch, and again at Phase 5 (AI) and Phase D (desktop distribution) — the two phases that change the answers to items 5, 6, 16 and 19.
@@ -365,4 +375,5 @@ Not because anything here is dangerous — the privacy and security posture is g
 - [x] Contrast is measured, with the real token values and the resolved `color-mix` results.
 - [x] Dependency licences inventoried; conflicts identified.
 - [x] Review log and launch decision recorded, with actions assigned and sequenced.
-- [ ] Actions 1, 4, 6, 8, 10, 11, 13, 15 outstanding.
+- [x] Actions 1, 4, 6, 8, 12 and 15 (action half) closed 2026-10-10.
+- [ ] Actions 10, 11 and 13 outstanding; 15 awaits specialist review before binary distribution.

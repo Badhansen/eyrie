@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest a feature, or support for a language or framework
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to see or do that Eyrie does not support today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What would you like Eyrie to do? For a new framework, link a small public example repository if you can.
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else

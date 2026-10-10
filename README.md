@@ -1,5 +1,8 @@
 # Eyrie
 
+[![CI](https://github.com/Badhansen/eyrie/actions/workflows/ci.yml/badge.svg)](https://github.com/Badhansen/eyrie/actions/workflows/ci.yml)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](LICENSE)
+
 **A live architecture map of your codebase that updates as you (or your coding agent) change the code.**
 
 Eyrie parses a repository locally, builds a code knowledge graph, derives a small architecture graph from it (pages → API routes → services → data → external services), and shows it as an interactive map. When a file is saved, only the affected part of the graph is recomputed and the change animates into the map: new components appear, edited ones pulse, and every save is recorded on a change tape at the bottom of the screen.
@@ -92,10 +95,14 @@ file watcher ── changed files only ───────────┘   di
 
 ## Privacy and security
 
+**Eyrie collects no personal data and makes no network requests.** The only thing it stores is a local analysis cache of the repository you point it at (file paths, symbol names and the graph built from them) under `~/.eyrie`. Nothing leaves your machine, and you can delete the cache at any time.
+
 - Everything runs locally. Eyrie makes no network requests; fonts are bundled.
 - The server binds to `127.0.0.1`, requires a random per-run access token, and rejects requests whose `Host` header is not local (DNS-rebinding protection).
 - The source endpoint only serves files that are in the index. `.env` files, keys and anything ignored by git are never readable through it.
-- The cache lives in `~/.eyrie/repos/<hash>/graph.db` (override with `EYRIE_HOME`).
+- The cache lives in `~/.eyrie/repos/<hash>/graph.db` (override with `EYRIE_HOME`). Delete that directory, or run with `--reset`, to start fresh.
+
+Found a security problem? Please report it privately. See [SECURITY.md](SECURITY.md).
 
 ## Development
 
@@ -116,6 +123,7 @@ fixtures/
 scripts/
   fetch-smoke-repo.sh  clones a real OSS app into .smoke/ for the smoke test
 LICENSE          GNU AGPL-3.0
+THIRD-PARTY-NOTICES.md  licences of bundled dependencies and fonts
 ```
 
 ```bash
@@ -168,6 +176,16 @@ To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed`
 
 This space moves fast. [GitNexus](https://github.com/abhigyanpatwari/GitNexus), [Understand-Anything](https://github.com/Egonex-AI/Understand-Anything), [Depwire](https://depwire.dev) and [CodeViz](https://www.codeviz.ai/) build code graphs for agents and humans. Eyrie focuses on a small, deterministic architecture view that stays live while code changes.
 
+## Contributing and support
+
+Eyrie is maintained by Badhan Sen ([@Badhansen](https://github.com/Badhansen)).
+
+- **Questions, bugs and feature requests:** [GitHub issues](https://github.com/Badhansen/eyrie/issues).
+- **Security problems:** report privately, as described in [SECURITY.md](SECURITY.md).
+- **Contributing:** start with [CONTRIBUTING.md](CONTRIBUTING.md). Everyone taking part agrees to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
 [GNU AGPL-3.0-only](LICENSE). You can read, run, modify and redistribute Eyrie freely. The one condition that matters: if you modify Eyrie and let other people use it over a network, you have to offer them your modified source too. Running it locally on your own code carries no obligation at all, and Eyrie never sends your code anywhere.
+
+Eyrie depends on open-source packages and bundles two fonts under their own licences; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
