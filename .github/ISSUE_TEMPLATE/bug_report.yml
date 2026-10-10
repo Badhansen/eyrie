@@ -1,0 +1,41 @@
+name: Bug report
+description: The map is wrong, Eyrie crashes, or the UI misbehaves
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did the map or CLI show, and what did you expect instead? Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: |
+        The smallest repository or code snippet that triggers it, or a link to a public repository and the commit.
+        For a missing or wrong edge, include the two files involved.
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Language and framework
+      placeholder: e.g. TypeScript / Next.js 15 App Router, Python / FastAPI
+  - type: input
+    id: commit
+    attributes:
+      label: Eyrie commit
+      description: Output of `git rev-parse --short HEAD` in your Eyrie checkout.
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: e.g. macOS 15, Node 22.13, Chrome 140
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Any `[eyrie]` output from the terminal or errors from the browser console.
+      render: text

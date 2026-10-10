@@ -10,7 +10,7 @@ The build blocks that specify Eyrie, one folder each: the six planning documents
 | 04 | [Design Brief](04-design-brief/README.md) | How should it look and feel? | Derived from the shipped design system |
 | 05 | [Backend Schema](05-backend-schema/README.md) | How is data stored, related and accessed? | Matches `SCHEMA_VERSION = '1'` |
 | 06 | [Implementation Plan](06-implementation-plan/README.md) | What gets built first, and how is it verified? | Phases 1–2 done, 5–7 planned |
-| 07 | [Launch Readiness](07-launch-readiness/README.md) | Is it safe and honest to put in front of real users? | **Hold** — 8 actions open |
+| 07 | [Launch Readiness](07-launch-readiness/README.md) | Is it safe and honest to put in front of real users? | **Hold** — 2 actions open (accessibility) |
 
 ## Reading order
 
