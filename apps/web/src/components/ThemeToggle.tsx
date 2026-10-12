@@ -1,31 +1,46 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { themeStore, useTheme, type ThemePreference } from '../state/theme';
-
-const OPTIONS: { value: ThemePreference; icon: React.ReactNode; tip: string }[] = [
-  { value: 'system', icon: <Monitor size={14} />, tip: 'System theme' },
-  { value: 'light', icon: <Sun size={14} />, tip: 'Light theme' },
-  { value: 'dark', icon: <Moon size={14} />, tip: 'Dark theme' },
-];
+import { useRef } from 'react';
+import { Monitor } from 'lucide-react';
+import { AnimatedThemeToggler, runThemeTransition } from './ui/animated-theme-toggler';
+import { themeStore, useTheme } from '../state/theme';
 
 export function ThemeToggle() {
-  const current = useTheme();
+  const preference = useTheme();
+  const systemButtonRef = useRef<HTMLButtonElement>(null);
+
+  const systemIsDark = !window.matchMedia('(prefers-color-scheme: light)').matches;
+  const currentIsDark = preference === 'system' ? systemIsDark : preference === 'dark';
+
   return (
-    <div role="radiogroup" aria-label="Theme" className="theme-toggle">
-      {OPTIONS.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={current === o.value}
-          aria-label={o.tip}
-          title={o.tip}
-          tabIndex={current === o.value ? 0 : -1}
-          onClick={() => themeStore.set(o.value)}
-          className="theme-option"
-        >
-          {o.icon}
-        </button>
-      ))}
+    <div className="theme-toggle" role="group" aria-label="Theme settings">
+      <button
+        ref={systemButtonRef}
+        type="button"
+        className="theme-option"
+        aria-checked={preference === 'system'}
+        title="System theme"
+        onClick={() => {
+          if (preference === 'system') return;
+          if (currentIsDark !== systemIsDark) {
+            runThemeTransition({
+              element: systemButtonRef.current,
+              applyChange: () => themeStore.set('system'),
+              variant: 'square',
+            });
+          } else {
+            themeStore.set('system');
+          }
+        }}
+      >
+        <Monitor size={14} />
+      </button>
+
+      <AnimatedThemeToggler
+        variant="square"
+        className="theme-option"
+        title={currentIsDark ? 'Switch to light theme' : 'Switch to dark theme'}
+        theme={currentIsDark ? 'dark' : 'light'}
+        onThemeChange={(newTheme) => themeStore.set(newTheme)}
+      />
     </div>
   );
 }
