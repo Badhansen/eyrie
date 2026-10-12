@@ -40,7 +40,7 @@ describe.skipIf(!present)('smoke: real open-source repo', () => {
   });
 
   it('indexes a real repo without crashing', () => {
-    // Far more than the fixture's 32; the point is that it scaled, not the exact count.
+    // Far more than the fixture's 34; the point is that it scaled, not the exact count.
     expect(engine.stats.files).toBeGreaterThan(100);
     expect(engine.repo.frameworks).toEqual(expect.arrayContaining(['next']));
   });

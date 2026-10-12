@@ -72,7 +72,7 @@ describe('code graph: incremental updates', () => {
       R,
       src
         .replace("import { buildOrderSummary } from '@/lib/summary';", "import { buildOrderSummary } from '@/lib/summary';\nimport { ShippingService } from './shipping.service';")
-        .replace('const reference = await this.payments.charge(totalCents);', 'await new ShippingService().quote(totalCents);\n    const reference = await this.payments.charge(totalCents);'),
+        .replace('const reference', 'await new ShippingService().quote(totalCents);\n    const reference'),
     );
     const edges = repo.edgeStrings();
     expect(edges).toContain('CALLS src/services/shipping.service.ts#ShippingService.quote -> src/services/payment.service.ts#PaymentService.charge');
@@ -98,7 +98,7 @@ describe('code graph: incremental updates', () => {
     const content = repo.files.get(path)!;
     const removed = await repo.remove(path);
     expect(removed.diff.removedNodes.length).toBeGreaterThan(0);
-    expect(repo.edgeStrings().some((e) => e.includes('payment.service.ts'))).toBe(false);
+    expect(repo.edgeStrings().some((e) => e.includes('src/services/payment.service.ts'))).toBe(false);
     // Stripe is no longer charged from the service layer, only from the webhook handler.
     expect(repo.edgeStrings()).not.toContain('USES src/services/payment.service.ts#PaymentService.charge -> external_service:Stripe');
 

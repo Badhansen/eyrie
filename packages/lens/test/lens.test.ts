@@ -109,11 +109,12 @@ describe('lenses over the fixture app', () => {
         'transfer RecommenderService -> OpenAI',
         'transfer CatalogService -> Algolia',
         'transfer PaymentService -> Stripe',
+        'transfer BackupPaymentService -> Lemon Squeezy',
         'carry Order API -> OrderService',
       ]),
     );
     // Every network and SDK crossing is a transfer, not an in-process hand-off.
-    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(7);
+    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(8);
     // The static home page and the middleware touch no data, so they drop out.
     const kept = new Set(flow.nodes.map((n) => n.label));
     expect(kept.has('Home Page')).toBe(false);
@@ -142,6 +143,8 @@ describe('lenses over the fixture app', () => {
       '2 Order API -> OrderService',
       '3 OrderService -> PaymentService',
       '4 PaymentService -> Stripe',
+      '3 OrderService -> BackupPaymentService',
+      '4 BackupPaymentService -> Lemon Squeezy',
       '3 OrderService -> OrderRepository',
       '4 OrderRepository -> Order',
       '4 OrderRepository -> OrderItem',
