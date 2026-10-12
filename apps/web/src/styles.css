@@ -36,8 +36,7 @@
   --color-removed: #ff6b6b;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
+[data-theme='light'] {
     --color-ink-0: #f4f5f2;
     --color-ink-1: #fbfbf9;
     --color-ink-2: #ffffff;
@@ -58,7 +57,6 @@
     --color-new: #1f9d5a;
     --color-modified: #b78a06;
     --color-removed: #d93c3c;
-  }
 }
 
 html,
@@ -117,6 +115,11 @@ button:disabled {
 .navbar-search-count { position: absolute; right: 34px; color: var(--color-dim); font: 10px var(--font-mono); pointer-events: none; }
 .navbar-search-clear { position: absolute; right: 4px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 3px; color: var(--color-dim); cursor: pointer; }
 .navbar-search-clear:hover { background: var(--color-ink-3); color: var(--color-text); }
+.theme-toggle { display: flex; gap: 1px; padding: 2px; border: 1px solid var(--color-rule); border-radius: 5px; background: var(--color-ink-0); }
+.theme-toggle .theme-option { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 3px; color: var(--color-dim); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+.theme-toggle .theme-option:hover { color: var(--color-text); background: var(--color-ink-3); }
+.theme-toggle .theme-option[aria-checked='true'] { color: var(--color-text); background: var(--color-ink-2); box-shadow: inset 0 0 0 1px var(--color-rule-strong); }
+.theme-toggle .theme-option[aria-checked='true'] svg { color: var(--color-frontend); }
 .navbar-status { display: flex; align-items: center; gap: 7px; min-height: 32px; white-space: nowrap; color: var(--color-dim); font: 11px var(--font-mono); }
 .navbar-context { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 42px; padding: 4px 20px; border-top: 1px solid var(--color-rule); background: var(--color-ink-0); }
 .navbar-repo-context { display: flex; align-items: center; gap: 20px; min-width: 0; }

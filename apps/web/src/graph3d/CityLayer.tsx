@@ -43,7 +43,6 @@ export function CityLayer({ layout, origin, angle, emphasis, selected, marks, fl
   useEffect(() => { sceneRef.current?.setViewport(viewport); }, [viewport, sceneRef]);
   useEffect(() => { sceneRef.current?.emphasize(emphasis, selected, marks, flow, sweep); }, [layout, emphasis, selected, marks, flow, sweep, sceneRef]);
   useEffect(() => {
-    const theme = window.matchMedia('(prefers-color-scheme: light)');
     const repaint = () => {
       const scene = sceneRef.current;
       scene?.build(layout, origin);
@@ -51,8 +50,15 @@ export function CityLayer({ layout, origin, angle, emphasis, selected, marks, fl
       scene?.setViewport(viewport);
       scene?.emphasize(emphasis, selected, marks, flow, sweep);
     };
-    theme.addEventListener('change', repaint);
-    return () => theme.removeEventListener('change', repaint);
+    // Repaint when data-theme attribute changes (user toggled theme).
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) if (m.attributeName === 'data-theme') { repaint(); break; }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    // Also repaint when the OS theme changes (relevant when preference is "system").
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    mq.addEventListener('change', repaint);
+    return () => { observer.disconnect(); mq.removeEventListener('change', repaint); };
   }, [layout, origin, angle, viewport, emphasis, selected, marks, flow, sweep, sceneRef]);
   useEffect(() => {
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');

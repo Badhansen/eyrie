@@ -5,6 +5,7 @@ import { matches } from '../graph/analysis';
 import { useLensGraph } from '../graph/useLensGraph';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../graph/vocabulary';
 import { store, useStore, type ConnectionStatus, type Lens } from '../state/store';
+import { ThemeToggle } from './ThemeToggle';
 
 export function TopBar() {
   const repo = useStore((s) => s.repo);
@@ -29,6 +30,7 @@ export function TopBar() {
         <LensSwitch />
         <div className="navbar-tools">
           <SearchBox />
+          <ThemeToggle />
           <LiveStatus />
         </div>
       </div>
