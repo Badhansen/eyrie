@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { ArchEdge, ArchGraph, ArchKind, ArchLane, ArchNode, CodeEdgeKind } from '@eyrie/core';
 import { deriveArchitecture } from '@eyrie/architecture';
 import { FixtureRepo } from '../../graph/test/fixture.js';
-import { dataFlowLens, dataRole, entryPoints, sequenceTrace } from '../src/index.js';
+import { SYSTEM_ID_PREFIX, dataFlowLens, dataRole, entryPoints, sequenceTrace, systemLens, type SystemPart } from '../src/index.js';
 
 const LANE: Partial<Record<ArchKind, ArchLane>> = {
   page: 'ui',
@@ -188,5 +188,65 @@ describe('sequence trace', () => {
     const trace = sequenceTrace([node('A', 'service')], [], 'A')!;
     expect(trace.steps).toEqual([]);
     expect(trace.participants).toEqual(['A']);
+  });
+});
+
+describe('system lens', () => {
+  let arch: ArchGraph;
+  beforeAll(async () => {
+    arch = deriveArchitecture((await FixtureRepo.load()).index);
+  });
+
+  const partOf = (n: ArchNode) => n.meta?.system as SystemPart | undefined;
+
+  it('groups every component into one box per layer and keeps external services on their own', () => {
+    const sys = systemLens(arch.nodes, arch.edges);
+    const boxes = sys.nodes.filter((n) => partOf(n));
+    expect(boxes.map((b) => b.label).sort()).toEqual(['API', 'Data', 'Services', 'UI']);
+
+    const grouped = boxes.flatMap((b) => partOf(b)!.members).sort();
+    const standalone = sys.nodes.filter((n) => !partOf(n));
+    expect(standalone.every((n) => n.kind === 'external_service' || n.meta?.missing === true)).toBe(true);
+    // Every component appears exactly once: inside one box, or as itself.
+    expect([...grouped, ...standalone.map((n) => n.id)].sort()).toEqual(arch.nodes.map((n) => n.id).sort());
+    expect(sys.nodes.length).toBeLessThan(arch.nodes.length);
+  });
+
+  it('merges links between boxes without losing their weight or kinds', () => {
+    const sys = systemLens(arch.nodes, arch.edges);
+    const label = new Map(sys.nodes.map((n) => [n.id, n.label]));
+    const link = (from: string, to: string) => sys.edges.find((e) => label.get(e.source) === from && label.get(e.target) === to);
+    expect(link('UI', 'API')?.kinds).toContain('HTTP_CALL');
+    expect(link('Services', 'Data')?.kinds).toEqual(expect.arrayContaining(['READS_FROM', 'WRITES_TO']));
+    expect(sys.edges.every((e) => e.source !== e.target)).toBe(true);
+
+    const boxOf = new Map<string, string>();
+    for (const n of sys.nodes) for (const m of partOf(n)?.members ?? [n.id]) boxOf.set(m, n.id);
+    const crossing = arch.edges.filter((e) => boxOf.get(e.source) !== boxOf.get(e.target)).reduce((sum, e) => sum + e.weight, 0);
+    expect(sys.edges.reduce((sum, e) => sum + e.weight, 0)).toBe(crossing);
+  });
+
+  it('is deterministic and uses ids that cannot collide with components', () => {
+    expect(systemLens(arch.nodes, arch.edges)).toEqual(systemLens([...arch.nodes].reverse(), [...arch.edges].reverse()));
+    const sys = systemLens(arch.nodes, arch.edges);
+    for (const n of sys.nodes.filter((x) => partOf(x))) expect(n.id.startsWith(SYSTEM_ID_PREFIX)).toBe(true);
+  });
+
+  it('separates the apps and packages of a monorepo and keeps missing routes visible', () => {
+    const at = (id: string, kind: ArchKind, file: string, extra: Partial<ArchNode> = {}): ArchNode => ({ ...node(id, kind), files: [file], ...extra });
+    const nodes = [
+      at('shop-page', 'page', 'apps/shop/src/app/page.tsx'),
+      at('shop-route', 'api_route', 'apps/shop/src/app/api/cart/route.ts'),
+      at('admin-page', 'page', 'apps/admin/src/app/page.tsx'),
+      at('mailer', 'service', 'packages/mail/src/index.ts'),
+      { ...node('missing', 'api_route'), meta: { missing: true } },
+    ];
+    const edges = [edge('shop-page', 'shop-route', ['HTTP_CALL']), edge('shop-page', 'missing', ['HTTP_CALL']), edge('shop-route', 'mailer', ['CALLS'])];
+    const sys = systemLens(nodes, edges);
+    const labels = sys.nodes.map((n) => n.label).sort();
+    // A scope with one layer is named after the scope alone.
+    expect(labels).toEqual(['Admin', 'Mail', 'Shop API', 'Shop UI', 'missing']);
+    const label = new Map(sys.nodes.map((n) => [n.id, n.label]));
+    expect(sys.edges.map((e) => `${label.get(e.source)} -> ${label.get(e.target)}`).sort()).toEqual(['Shop API -> Mail', 'Shop UI -> Shop API', 'Shop UI -> missing']);
   });
 });
