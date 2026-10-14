@@ -1281,6 +1281,9 @@ export class GraphIndex {
   private matchRoute(path: string, method: string, appRoot: string): { id: string; confidence: number } | null {
     let best: { id: string; score: number; exact: boolean } | null = null;
     for (const r of this.routes) {
+      // A relative URL inside one Next.js app is served by that app, never by a sibling app.
+      // Callers outside any Next.js app (an SPA behind a dev proxy) may still reach any server.
+      if (appRoot && r.appRoot && r.appRoot !== appRoot) continue;
       const s = matchRoutePath(path, r.path);
       if (!s) continue;
       let score = s;
