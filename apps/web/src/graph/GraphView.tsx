@@ -215,7 +215,7 @@ function Shortcuts({ onFit }: { onFit: () => void }) {
   return null;
 }
 
-const LENS_KEYS: Record<string, Lens> = { '1': 'architecture', '2': 'dataflow', '3': 'sequence', '4': 'system' };
+const LENS_KEYS: Record<string, Lens> = { '1': 'system', '2': 'architecture', '3': 'dataflow', '4': 'sequence' };
 
 /** Shortcuts that work in every lens, including the sequence view. */
 function GlobalKeys() {

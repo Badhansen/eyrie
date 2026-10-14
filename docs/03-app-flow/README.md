@@ -83,7 +83,7 @@ Browser opens /?token=…
 
 | Key | Action |
 | --- | --- |
-| `1` / `2` / `3` / `4` | Architecture / Data flow / Sequence / System lens |
+| `1` / `2` / `3` / `4` | System / Architecture / Data flow / Sequence lens |
 | `V` | Toggle 2D ↔ 3D |
 | `F` | Fit the graph to the viewport |
 | `⌘K` or `/` | Open search (`/` ignored while typing in a field) |
@@ -113,7 +113,9 @@ Browser opens /?token=…
 ### A. Understand an unfamiliar repository
 
 ```text
-Start engine → map renders (Architecture lens)
+Start engine → map renders (System lens on a first visit)
+├── read the parts: each app's UI, API, services and data, external services
+├── select a box → what it holds; click a component → Architecture lens (2)
 ├── read lane ruler: UI → Edge → API → Logic → Data → External
 ├── read colour: blue frontend, green API, orange service, purple AI,
 │                cyan data, yellow external, grey utility, red broken

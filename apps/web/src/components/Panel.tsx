@@ -232,7 +232,7 @@ function SystemDetails({ node }: { node: ArchNode }) {
       <div className="flex flex-col gap-6 px-5 py-5">
         <Section title="Purpose">
           <p className="text-[13.5px] leading-relaxed text-text">{node.summary}</p>
-          <p className="mt-2 text-[11.5px] text-dim">A group derived from where components live and which lane they sit in. Press 1 to see every component.</p>
+          <p className="mt-2 text-[11.5px] text-dim">A group derived from where components live and which lane they sit in. Press 2 to see every component.</p>
         </Section>
 
         <Section title="Trace">

@@ -63,10 +63,10 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 const LENS_OPTIONS: { value: Lens; label: string; icon: React.ReactNode; hint: string; key: string }[] = [
-  { value: 'architecture', label: 'Architecture', icon: <MapIcon size={13} />, hint: 'What the system is made of', key: '1' },
-  { value: 'dataflow', label: 'Data flow', icon: <Database size={13} />, hint: 'Where data is read, written and sent over the network', key: '2' },
-  { value: 'sequence', label: 'Sequence', icon: <ListOrdered size={13} />, hint: 'What one request does, step by step', key: '3' },
-  { value: 'system', label: 'System', icon: <Layers size={13} />, hint: 'The parts of the system: each app\u2019s UI, API, services and data, and the services it calls', key: '4' },
+  { value: 'system', label: 'System', icon: <Layers size={13} />, hint: 'The parts of the system: each app\u2019s UI, API, services and data, and the services it calls', key: '1' },
+  { value: 'architecture', label: 'Architecture', icon: <MapIcon size={13} />, hint: 'Every component the system is made of', key: '2' },
+  { value: 'dataflow', label: 'Data flow', icon: <Database size={13} />, hint: 'Where data is read, written and sent over the network', key: '3' },
+  { value: 'sequence', label: 'Sequence', icon: <ListOrdered size={13} />, hint: 'What one request does, step by step', key: '4' },
 ];
 
 function LensSwitch() {

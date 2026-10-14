@@ -44,7 +44,7 @@ The third position, increasingly the point: **codebases are now modified by agen
 - One repository per running engine; one user per engine.
 - The parse cache lives at `~/.eyrie/repos/<hash>/graph.db` (override with `EYRIE_HOME`). Deletable at any time.
 - The UI is the only surface. Six lanes in request order — UI → Edge → API → Logic → Data → External — are product vocabulary, not a layout choice.
-- Four lenses over one graph: Architecture, Data flow, Sequence, System. Plus a 2D map and a 3D "city" view where block height is lines of code.
+- Four lenses over one graph, from the whole system down to one request: System, Architecture, Data flow, Sequence. Plus a 2D map and a 3D "city" view where block height is lines of code.
 - Round-trip to the editor is part of the workflow: `POST /api/open` launches the first of `cursor`, `code`, `windsurf`, `zed` found on `PATH`, or `EYRIE_EDITOR`, at the right line.
 - Two `localStorage` keys hold UI preferences the user set themselves. No other client state.
 

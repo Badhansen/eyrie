@@ -29,12 +29,14 @@ function savedView(): ViewMode {
     return '3d';
   }
 }
+const LENSES: readonly Lens[] = ['system', 'architecture', 'dataflow', 'sequence'];
+/** The lens the user last chose; a first visit starts at the System view and zooms in from there. */
 function savedLens(): Lens {
   try {
     const v = localStorage.getItem(LENS_KEY);
-    return v === 'dataflow' || v === 'sequence' || v === 'system' ? v : 'architecture';
+    return LENSES.find((l) => l === v) ?? 'system';
   } catch {
-    return 'architecture';
+    return 'system';
   }
 }
 
