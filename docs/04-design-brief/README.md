@@ -117,7 +117,7 @@ A fixed full-height shell; the canvas takes all remaining space.
 | **Block (3D)** | Same identity as its 2D node; **height encodes lines of code** and is never used for anything else. Lives in its lane's district on the perspective floor |
 | **Edge** | Solid = call; dashed = HTTP (crosses a network boundary); cyan = data read/write. Base `--edge`, highlighted `--edge-hot`. Data-flow reads point *out of the store*, so arrows follow the data rather than the dependency |
 | **Lane ruler** | Lane names in `.wide` small caps-ish type; a coloured dot marks an off-screen change and is clickable |
-| **Top bar** | Repo identity, three lens buttons (titled with their shortcut, e.g. `Architecture (1)`), search entry, category filters, fit. Every control states its shortcut in its `title` |
+| **Top bar** | Repo identity, four lens buttons (titled with their shortcut, e.g. `Architecture (1)`), search entry, category filters, fit. Every control states its shortcut in its `title` |
 | **Search** | Opens on `⌘K` or `/`; `Enter` takes the first result; `Esc` closes. `/` must be ignored while the user is typing in a field |
 | **Details panel** | Fixed sections in a fixed order: purpose → source (with preview and *Open in editor*) → calls → used by → symbols → trace/impact. Order is stable so the eye learns it |
 | **Change tape** | One tick per save: height = change magnitude, colour = change type. Hover highlights what it touched; click jumps there. Ticks animate in with `tick-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1)` |
@@ -161,7 +161,7 @@ Eyrie targets a developer at a desktop or laptop; there is no mobile layout and 
 | Requirement | Implementation |
 | --- | --- |
 | Visible focus | Global `:focus-visible` → 2px solid `--color-frontend`, 2px offset. Never remove it |
-| Keyboard parity | Every pointer action has a key: lenses `1`/`2`/`3`, view `V`, fit `F`, search `⌘K` / `/`, clear `Esc`, 3D camera `Q`/`E`/`T`/`R` |
+| Keyboard parity | Every pointer action has a key: lenses `1`–`4`, view `V`, fit `F`, search `⌘K` / `/`, clear `Esc`, 3D camera `Q`/`E`/`T`/`R` |
 | Reduced motion | Honoured in CSS and JS, as above |
 | Contrast | Measured, not assumed — see the table in [07 §11](../07-launch-readiness/README.md#11-check-readability-contrast-and-resizing). `--color-text` ≥ 13.7:1 and `--color-dim` ≥ 6.3:1 in both schemes; every category colour clears 3:1 as a border/graphic. **`--color-faint` does not reach 4.5:1 in either scheme (3.18–3.61 dark, 2.89–3.17 light) and is used as 9.5–10px text** — open fix. Any new token must be measured in **both** schemes |
 | Not colour alone | Change state carries badges; edge kind carries dash pattern as well as colour |

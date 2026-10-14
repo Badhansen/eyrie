@@ -66,7 +66,7 @@ Browser opens /?token=…
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ TopBar: repo name · lens 1/2/3 · search ⌘K · filters · fit F │
+│ TopBar: repo name · lens 1–4 · search ⌘K · filters · fit F   │
 ├──────────────────────────────────────────────┬───────────────┤
 │ Lane ruler:  UI │ Edge │ API │ Logic │ Data  │               │
 │                                              │   Details     │
@@ -83,7 +83,7 @@ Browser opens /?token=…
 
 | Key | Action |
 | --- | --- |
-| `1` / `2` / `3` | Architecture / Data flow / Sequence lens |
+| `1` / `2` / `3` / `4` | Architecture / Data flow / Sequence / System lens |
 | `V` | Toggle 2D ↔ 3D |
 | `F` | Fit the graph to the viewport |
 | `⌘K` or `/` | Open search (`/` ignored while typing in a field) |
@@ -188,6 +188,7 @@ Press 2 (Data flow)
 | Helper used by many components, or on a dependency path in a library-style repo? | Shown ↔ lifted away |
 | Editor found on `PATH` or `EYRIE_EDITOR` set? | Launch ↔ `501`, UI reports no editor |
 | Lens = sequence and selection has outgoing edges? | That component becomes the sequence entry point ↔ keep current entry |
+| Switching to the System lens with a component selected? | Its box is selected instead ↔ leaving the System lens clears a selected box |
 
 ## 7. Interface states
 

@@ -44,13 +44,13 @@ The third position, increasingly the point: **codebases are now modified by agen
 - One repository per running engine; one user per engine.
 - The parse cache lives at `~/.eyrie/repos/<hash>/graph.db` (override with `EYRIE_HOME`). Deletable at any time.
 - The UI is the only surface. Six lanes in request order — UI → Edge → API → Logic → Data → External — are product vocabulary, not a layout choice.
-- Three lenses over one graph: Architecture, Data flow, Sequence. Plus a 2D map and a 3D "city" view where block height is lines of code.
+- Four lenses over one graph: Architecture, Data flow, Sequence, System. Plus a 2D map and a 3D "city" view where block height is lines of code.
 - Round-trip to the editor is part of the workflow: `POST /api/open` launches the first of `cursor`, `code`, `windsurf`, `zed` found on `PATH`, or `EYRIE_EDITOR`, at the right line.
 - Two `localStorage` keys hold UI preferences the user set themselves. No other client state.
 
 ## Capabilities and Constraints
 
-**Shipped (Phases 1–2, end to end):** repository indexing with content-hash caching; the six-lane architecture map; all three lenses; 2D and 3D views; live updates with diff-driven animation and the change tape; details panel (purpose, source preview, open in editor, calls / used by, symbols); trace (downstream) and impact (upstream); search, category filters, fit, keyboard navigation.
+**Shipped (Phases 1–2, end to end):** repository indexing with content-hash caching; the six-lane architecture map; all four lenses; 2D and 3D views; live updates with diff-driven animation and the change tape; details panel (purpose, source preview, open in editor, calls / used by, symbols); trace (downstream) and impact (upstream); search, category filters, fit, keyboard navigation.
 
 **Planned:** collapse/expand and semantic zoom (3); shortest path and code-level impact (4); graph-backed AI summaries and Q&A (5); git overlays, branch/commit diffs, timeline (6); agent-session attribution and an MCP surface (7); a Tauri desktop shell with the engine as a sidecar.
 
@@ -110,7 +110,7 @@ The third position, increasingly the point: **codebases are now modified by agen
 
 Established commitments any new work must keep:
 
-- **Keyboard parity.** Every pointer action has a key: lenses `1`/`2`/`3`, view `V`, fit `F`, search `⌘K` / `/`, clear `Esc`, 3D camera `Q`/`E`/`T`/`R`. Graph nodes are real controls in both the 2D canvas and the 3D city — focusable, labelled, activated by `Enter`/`Space`.
+- **Keyboard parity.** Every pointer action has a key: lenses `1`–`4`, view `V`, fit `F`, search `⌘K` / `/`, clear `Esc`, 3D camera `Q`/`E`/`T`/`R`. Graph nodes are real controls in both the 2D canvas and the 3D city — focusable, labelled, activated by `Enter`/`Space`.
 - **Visible focus, never removed.** Global `:focus-visible`, 2px solid, 2px offset.
 - **Reduced motion honoured in both layers** — CSS media query *and* a `matchMedia` check in JS, so programmatic animation is skipped too. The end state must be reached either way.
 - **Never meaning in colour alone.** Change state also carries a `+` / `~` / `−` badge; edge semantics also carry dash patterns.

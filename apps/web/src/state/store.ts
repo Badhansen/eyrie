@@ -11,13 +11,14 @@ import {
   type RepoInfo,
   type ServerMessage,
 } from '@eyrie/core';
+import { SYSTEM_ID_PREFIX, systemIdOf } from '@eyrie/lens';
 
 export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'unauthorized';
 export type Mark = 'new' | 'modified' | 'removed';
 export type FocusMode = 'neighbors' | 'downstream' | 'upstream';
 export type ViewMode = '2d' | '3d';
-/** Which question the map answers: how it is built, how data moves, or what one request does. */
-export type Lens = 'architecture' | 'dataflow' | 'sequence';
+/** Which question the map answers: how it is built, how data moves, what one request does, or what the system's parts are. */
+export type Lens = 'architecture' | 'dataflow' | 'sequence' | 'system';
 
 const VIEW_KEY = 'eyrie-view';
 const LENS_KEY = 'eyrie-lens';
@@ -31,7 +32,7 @@ function savedView(): ViewMode {
 function savedLens(): Lens {
   try {
     const v = localStorage.getItem(LENS_KEY);
-    return v === 'dataflow' || v === 'sequence' ? v : 'architecture';
+    return v === 'dataflow' || v === 'sequence' || v === 'system' ? v : 'architecture';
   } catch {
     return 'architecture';
   }
@@ -121,12 +122,16 @@ class Store {
 
   // ── actions ──────────────────────────────────────────────────────────────
 
-  select = (id: string | null, reveal = false) =>
+  select = (id: string | null, reveal = false) => {
+    // The System view draws components inside boxes; selecting a component selects its box.
+    const component = id && this.state.lens === 'system' ? this.state.nodes.get(id) : undefined;
+    if (component) id = systemIdOf(component);
     this.set({
       selected: id,
       focus: id === this.state.selected ? this.state.focus : 'neighbors',
       reveal: reveal && id ? { id, n: (this.state.reveal?.n ?? 0) + 1 } : this.state.reveal,
     });
+  };
   setFocus = (focus: FocusMode) => this.set({ focus });
   setView = (view: ViewMode) => {
     try {
@@ -146,6 +151,12 @@ class Store {
     // Switching to the sequence view traces the selection, when a request can start there.
     const selected = this.state.selected;
     if (lens === 'sequence' && selected && [...this.state.edges.values()].some((e) => e.source === selected)) patch.sequenceEntry = selected;
+    // The System view shows a selected component as the box that holds it; other lenses have no boxes.
+    if (selected) {
+      const component = this.state.nodes.get(selected);
+      if (lens === 'system' && component) patch.selected = systemIdOf(component);
+      else if (lens !== 'system' && selected.startsWith(SYSTEM_ID_PREFIX)) patch.selected = null;
+    }
     this.set(patch);
   };
   setSequenceEntry = (sequenceEntry: string | null) => this.set({ sequenceEntry });
@@ -216,7 +227,8 @@ class Store {
 
     const structural = diff.addedNodes.length + diff.removedNodes.length + diff.addedEdges.length + diff.removedEdges.length + diff.updatedNodes.length + diff.updatedEdges.length > 0;
     const patch: Partial<State> = { nodes, edges, ghosts, marks, graphVersion: structural ? this.state.graphVersion + 1 : this.state.graphVersion };
-    if (this.state.selected && !nodes.has(this.state.selected)) patch.selected = null;
+    // A selected System-view box is not a component; it lives as long as the lens shows it.
+    if (this.state.selected && !this.state.selected.startsWith(SYSTEM_ID_PREFIX) && !nodes.has(this.state.selected)) patch.selected = null;
     if (this.state.sequenceEntry && !nodes.has(this.state.sequenceEntry)) patch.sequenceEntry = null;
     if (meta && (files.length || structural)) {
       const frame: ChangeFrame = {

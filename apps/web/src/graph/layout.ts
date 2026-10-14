@@ -163,6 +163,12 @@ export function roundedPath(points: Point[], radius = 10): string {
   return `${d}L${last.x.toFixed(1)},${last.y.toFixed(1)}`;
 }
 
+/** The point a fraction `t` of the way along a polyline, by length. */
+export function pointAlong(points: Point[], t: number): Point {
+  if (points.length < 2) return points[0] ?? { x: 0, y: 0 };
+  return resample(points, 101)[Math.round(Math.min(1, Math.max(0, t)) * 100)]!;
+}
+
 /** Resamples a polyline to `n` evenly spaced points (for tweening routes). */
 export function resample(points: Point[], n: number): Point[] {
   const lengths = [0];

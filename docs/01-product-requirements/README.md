@@ -44,7 +44,7 @@ All four are technical, run the tool on their own machine, and already have the 
 
 - Index a TypeScript/JavaScript repository; cache parse results by content hash.
 - Architecture map with six lanes: UI → Edge → API → Logic → Data → External.
-- Three lenses: Architecture, Data flow, Sequence.
+- Four lenses: Architecture, Data flow, Sequence, System (components grouped by app or package and layer).
 - 2D map and a 3D "city" view where block height is lines of code.
 - Live updates on file save, with diff-driven animation and a change tape.
 - Details panel: purpose, source location with preview, open in editor, calls / used by, symbols.

@@ -6,7 +6,7 @@ import { focusSet, matches } from './analysis';
 import { FlowCanvas } from './FlowCanvas';
 import { computeLayout, type Layout } from './layout';
 import type { CityRenderer, GraphRenderer, Highlight } from './renderer';
-import { useLensGraph } from './useLensGraph';
+import { boxIds, boxMarks, useLensGraph } from './useLensGraph';
 
 export function GraphView() {
   const lens = useStore((s) => s.lens);
@@ -18,7 +18,7 @@ export function GraphView() {
   );
 }
 
-/** The architecture and data-flow lenses are the same map, drawn in 2D or 3D. */
+/** The architecture, data-flow and System lenses are the same map, drawn in 2D or 3D. */
 function MapView() {
   const flowRef = useRef<CityRenderer | null>(null);
   const rendererRef = useRef<GraphRenderer | null>(null);
@@ -39,6 +39,10 @@ function MapView() {
   const frames = useStore((s) => s.frames);
   const reveal = useStore((s) => s.reveal);
   const view = useStore((s) => s.view);
+  // In the System view a box shows the changes of the components inside it.
+  const shownMarks = useMemo(() => (lens === 'system' ? boxMarks(marks, nodes) : marks), [lens, marks, nodes]);
+  const marksRef = useRef(shownMarks);
+  marksRef.current = shownMarks;
 
   // One renderer at a time; switching views rebuilds it from the current layout.
   useEffect(() => {
@@ -47,7 +51,7 @@ function MapView() {
     rendererRef.current = renderer;
     const layout = layoutRef.current;
     if (layout?.nodes.size) {
-      renderer.render(layout, store.get().marks, { animate: false });
+      renderer.render(layout, marksRef.current, { animate: false });
       renderer.fit(0);
       if (highlightRef.current) renderer.setHighlight(highlightRef.current);
     }
@@ -82,24 +86,29 @@ function MapView() {
       const switched = lensRef.current !== lens;
       lensRef.current = lens;
       layoutRef.current = layout;
-      renderer.render(layout, store.get().marks, { animate: !first });
+      renderer.render(layout, marksRef.current, { animate: !first });
       // A lens shows a different slice of the repo; frame it.
       if ((first || switched) && layout.nodes.size) renderer.fit(first ? 0 : 420);
     })();
   }, [graphVersion, nodes, edges, hidden, lens]);
 
-  useEffect(() => rendererRef.current?.setMarks(marks), [marks]);
+  useEffect(() => rendererRef.current?.setMarks(shownMarks), [shownMarks]);
 
   const focus = useMemo(() => (selected && nodes.some((n) => n.id === selected) ? focusSet(edges, selected, focusMode) : null), [selected, focusMode, edges, nodes]);
+  const components = useStore((s) => s.nodes);
   const matchSet = useMemo(() => {
     if (!query.trim()) return null;
+    // In the System view a box lights up when a component inside it matches.
+    if (lens === 'system') return boxIds([...components.values()].filter((n) => matches(n, query)).map((n) => n.id), nodes);
     return new Set(nodes.filter((n) => matches(n, query)).map((n) => n.id));
-  }, [query, nodes]);
+  }, [query, nodes, lens, components]);
   const frameSet = useMemo(() => {
     if (hoverFrame === null) return null;
     const f = frames.find((x) => x.seq === hoverFrame);
-    return f ? new Set([...f.touched, ...f.added.map((a) => a.id)]) : null;
-  }, [hoverFrame, frames]);
+    if (!f) return null;
+    const ids = [...f.touched, ...f.added.map((a) => a.id)];
+    return lens === 'system' ? boxIds(ids, nodes) : new Set(ids);
+  }, [hoverFrame, frames, lens, nodes]);
 
   useEffect(() => {
     const hl: Highlight = { selected, focus, flow: focusMode !== 'neighbors', matches: matchSet, frame: frameSet };
@@ -206,7 +215,7 @@ function Shortcuts({ onFit }: { onFit: () => void }) {
   return null;
 }
 
-const LENS_KEYS: Record<string, Lens> = { '1': 'architecture', '2': 'dataflow', '3': 'sequence' };
+const LENS_KEYS: Record<string, Lens> = { '1': 'architecture', '2': 'dataflow', '3': 'sequence', '4': 'system' };
 
 /** Shortcuts that work in every lens, including the sequence view. */
 function GlobalKeys() {
