@@ -316,6 +316,11 @@ button:disabled {
 .react-flow__edge.role-transfer .react-flow__edge-path { stroke-dasharray: 7 4; }
 .react-flow__edge.role-carry .react-flow__edge-path { stroke-dasharray: 2 4; }
 .flow-edge.hot .react-flow__edge-path { stroke: var(--color-text); stroke-width: 2; }
+/* System view: a box stands for several components, drawn as a stack. */
+.flow-node.is-system:not(.city-label) { box-shadow: 4px 4px 0 -1px var(--color-ink-0), 4px 4px 0 0 color-mix(in oklab, var(--c) 45%, var(--color-rule)); }
+.flow-edge-label { position: absolute; padding: 0 5px; border: 1px solid var(--color-rule); border-radius: 3px; background: var(--color-ink-1); color: var(--color-dim); font: 10px/15px var(--font-mono); white-space: nowrap; pointer-events: none; }
+.flow-edge-label.is-hot { border-color: var(--color-rule-strong); color: var(--color-text); }
+.flow-edge-label.is-dim { opacity: 0.3; }
 .react-flow__edge.is-dim { opacity: 0.14; }
 .react-flow__edge.is-faded { opacity: 0.4; }
 .flow-lanes { position: absolute; z-index: -1; pointer-events: none; }

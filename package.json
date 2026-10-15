@@ -22,6 +22,7 @@
     "build": "pnpm --filter @eyrie/web build",
     "start": "pnpm build && tsx packages/server/src/cli.ts",
     "eyrie": "tsx packages/server/src/cli.ts",
+    "arch": "tsx scripts/arch-review/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:fetch": "bash scripts/fetch-smoke-repo.sh",

@@ -2,7 +2,8 @@ import { ArrowDownRight, ArrowUpLeft, Code2, ExternalLink, Network, X } from 'lu
 import { useEffect, useMemo, useState } from 'react';
 import type { ArchEdge, ArchNode, CodeNodeKind } from '@eyrie/core';
 import { focusSet, impactOf, type Impact } from '../graph/analysis';
-import { KIND_LABEL, LANE_LABEL, catClass, edgeVerbs, isBroken } from '../graph/vocabulary';
+import { useLensGraph } from '../graph/useLensGraph';
+import { KIND_LABEL, LANE_LABEL, catClass, edgeVerbs, isBroken, kindLabel, systemPart } from '../graph/vocabulary';
 import { api, store, useStore, type FocusMode } from '../state/store';
 
 interface Member {
@@ -38,14 +39,16 @@ interface Source {
 export function Panel() {
   const selected = useStore((s) => s.selected);
   const nodes = useStore((s) => s.nodes);
-  const node = selected ? nodes.get(selected) : undefined;
+  const lensGraph = useLensGraph();
+  // A System-view box exists only in that lens, not in the component graph.
+  const node = selected ? (nodes.get(selected) ?? lensGraph.nodes.find((n) => n.id === selected)) : undefined;
   if (!node) return null;
   return (
     <aside
       aria-label={`${node.label} details`}
       className="detail-panel scroll-thin fixed inset-x-0 bottom-0 z-20 max-h-[min(60dvh,calc(100dvh-340px))] overflow-y-auto rounded-t-lg border-t border-rule bg-ink-1 md:static md:z-auto md:max-h-none md:w-[384px] md:shrink-0 md:rounded-none md:border-t-0 md:border-l"
     >
-      <Details key={node.id} node={node} />
+      {systemPart(node) ? <SystemDetails key={node.id} node={node} /> : <Details key={node.id} node={node} />}
     </aside>
   );
 }
@@ -183,6 +186,84 @@ function Details({ node }: { node: ArchNode }) {
               ))}
             </ul>
           )}
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+/** A System-view box: what it groups, what it talks to, and a way down to each component. */
+function SystemDetails({ node }: { node: ArchNode }) {
+  const part = systemPart(node)!;
+  const components = useStore((s) => s.nodes);
+  const focus = useStore((s) => s.focus);
+  const { nodes, edges } = useLensGraph();
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const outgoing = useMemo(() => edges.filter((e) => e.source === node.id), [edges, node.id]);
+  const incoming = useMemo(() => edges.filter((e) => e.target === node.id), [edges, node.id]);
+  const down = useMemo(() => impactOf(byId, focusSet(edges, node.id, 'downstream')), [byId, edges, node.id]);
+  const up = useMemo(() => impactOf(byId, focusSet(edges, node.id, 'upstream')), [byId, edges, node.id]);
+  const members = useMemo(
+    () => part.members.map((id) => components.get(id)).filter((m): m is ArchNode => !!m).sort((a, b) => a.lane.localeCompare(b.lane) || a.label.localeCompare(b.label)),
+    [part.members, components],
+  );
+  const open = (id: string) => {
+    store.setLens('architecture');
+    store.select(id, true);
+  };
+
+  return (
+    <div className={`${catClass(node)} detail-content flex flex-col`}>
+      <div className="sticky top-0 z-10 border-b border-rule bg-ink-1/95 px-5 pt-4 pb-4 backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-mono text-[10.5px] tracking-[0.12em] uppercase" style={{ color: 'var(--c)' }}>
+            <span className="h-2 w-2 rounded-sm" style={{ background: 'var(--c)' }} />
+            {kindLabel(node)}
+            <span className="text-faint">· System view</span>
+          </div>
+          <button type="button" aria-label="Close details" onClick={() => store.select(null)} className="rounded p-1 text-faint hover:bg-ink-3 hover:text-text">
+            <X size={15} />
+          </button>
+        </div>
+        <h2 className="condensed mt-2 text-[22px] leading-tight font-[680] tracking-tight break-words">{node.label}</h2>
+        {part.scope ? <p className="mt-1 font-mono text-[11.5px] break-all text-dim">{part.scope}</p> : null}
+      </div>
+
+      <div className="flex flex-col gap-6 px-5 py-5">
+        <Section title="Purpose">
+          <p className="text-[13.5px] leading-relaxed text-text">{node.summary}</p>
+          <p className="mt-2 text-[11.5px] text-dim">A group derived from where components live and which lane they sit in. Press 2 to see every component.</p>
+        </Section>
+
+        <Section title="Trace">
+          <FocusSwitch value={focus} />
+          <ImpactSummary mode={focus} down={down} up={up} />
+        </Section>
+
+        <EdgeList title="Calls" empty="Calls nothing outside this group." edges={outgoing} pick={(e) => e.target} nodes={byId} />
+        <EdgeList title="Used by" empty="Nothing outside this group uses it." edges={incoming} pick={(e) => e.source} nodes={byId} />
+
+        <Section title={`Contains · ${members.length}`}>
+          <ul className="flex flex-col">
+            {members.map((m) => (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  onClick={() => open(m.id)}
+                  aria-label={`${m.label}, ${KIND_LABEL[m.kind]}: show in the architecture view`}
+                  title="Show in the architecture view"
+                  className={`${catClass(m)} flex w-full items-center gap-2.5 rounded px-1.5 py-1.5 text-left hover:bg-ink-3`}
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: 'var(--c)' }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] text-text">{m.label}</span>
+                    <span className="block truncate font-mono text-[10.5px] text-dim">{m.sublabel ?? m.files[0] ?? ''}</span>
+                  </span>
+                  <span className="shrink-0 font-mono text-[10.5px] text-dim">{KIND_LABEL[m.kind]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </Section>
       </div>
     </div>

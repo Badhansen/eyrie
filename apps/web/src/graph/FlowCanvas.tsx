@@ -1,5 +1,5 @@
 import {
-  BaseEdge, Background, BackgroundVariant, Handle, MarkerType, MiniMap, Position, ReactFlow,
+  BaseEdge, Background, BackgroundVariant, EdgeLabelRenderer, Handle, MarkerType, MiniMap, Position, ReactFlow,
   ViewportPortal, useReactFlow, useViewport, type Edge, type EdgeProps, type Node, type NodeProps, type ReactFlowInstance,
 } from '@xyflow/react';
 import { ArrowLeft, ArrowRight, Boxes, Database, FileCode2, Network, Route } from 'lucide-react';
@@ -9,16 +9,16 @@ import type { ArchNode } from '@eyrie/core';
 import type { Mark } from '../state/store';
 import { focusSet } from './analysis';
 import { reducedMotion, sendParticle, startFlow } from './effects';
-import { NODE_H, NODE_W, roundedPath, type Layout, type PlacedNode, type Point } from './layout';
+import { NODE_H, NODE_W, pointAlong, roundedPath, type Layout, type PlacedNode, type Point } from './layout';
 import type { CityRenderer, Highlight, RendererCallbacks } from './renderer';
 import type { CityScene } from '../graph3d/CityScene';
 import { CITY_LABEL_H, CITY_LABEL_W, HOME_ANGLE, cityLabelMatrix, projectCity, projectPoint, orientCamera, type CityAngle } from '../graph3d/projection';
 import { OrthographicCamera } from 'three';
 import { store } from '../state/store';
-import { KIND_LABEL, LANE_LABEL, catClass, dataRoleOf, edgeVerbs, isBroken, linkClass } from './vocabulary';
+import { LANE_LABEL, catClass, dataRoleOf, edgeVerbs, isBroken, kindLabel, linkClass, systemPart } from './vocabulary';
 
 type ComponentNode = Node<{ node: ArchNode; mark?: Mark; dim: boolean; faded: boolean; match: boolean; exiting: boolean; city: boolean; roofTransform?: string }, 'component'>;
-type DependencyEdge = Edge<{ points: Point[]; hot: boolean; flow: boolean; sweep: number; description: string; city: boolean }, 'dependency'>;
+type DependencyEdge = Edge<{ points: Point[]; hot: boolean; flow: boolean; sweep: number; description: string; city: boolean; label?: string; muted: boolean }, 'dependency'>;
 type Instance = ReactFlowInstance<ComponentNode, DependencyEdge>;
 const EMPTY_HIGHLIGHT: Highlight = { selected: null, focus: null, flow: false, matches: null, frame: null };
 const GLYPH: Record<Mark, string> = { new: '+', modified: '~', removed: '−' };
@@ -29,9 +29,9 @@ const Component = memo(function Component({ data, selected }: NodeProps<Componen
   const Icon = node.lane === 'ui' ? FileCode2 : node.lane === 'api' || node.lane === 'edge' ? Route : node.lane === 'data' ? Database : node.lane === 'external' ? Network : Boxes;
   const path = node.sublabel ?? node.source?.file ?? '';
   return (
-    <div style={data.roofTransform ? { transform: data.roofTransform } : undefined} className={`flow-node${data.city ? ' city-label' : ''} ${catClass(node)}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${faded ? ' is-faded' : ''}${match ? ' is-match' : ''}${isBroken(node) ? ' is-broken' : ''}${mark ? ` mark-${mark}` : ''}${exiting ? ' is-exiting' : ''}`}>
+    <div style={data.roofTransform ? { transform: data.roofTransform } : undefined} className={`flow-node${data.city ? ' city-label' : ''}${systemPart(node) ? ' is-system' : ''} ${catClass(node)}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${faded ? ' is-faded' : ''}${match ? ' is-match' : ''}${isBroken(node) ? ' is-broken' : ''}${mark ? ` mark-${mark}` : ''}${exiting ? ' is-exiting' : ''}`}>
       <Handle type="target" position={Position.Left} isConnectable={false} />
-      <div className="flow-node-meta"><Icon size={12} aria-hidden="true" /><span>{KIND_LABEL[node.kind]}</span>{mark ? <span className={`flow-change ${mark}`} aria-label={mark}>{GLYPH[mark]}</span> : null}</div>
+      <div className="flow-node-meta"><Icon size={12} aria-hidden="true" /><span>{kindLabel(node)}</span>{mark ? <span className={`flow-change ${mark}`} aria-label={mark}>{GLYPH[mark]}</span> : null}</div>
       <strong className="flow-node-title" title={node.label}>{node.label}</strong>
       <span className="flow-node-path" title={path}>{path.length > 31 ? `…${path.slice(-30)}` : path}</span>
       <Handle type="source" position={Position.Right} isConnectable={false} />
@@ -49,13 +49,23 @@ const Dependency = memo(function Dependency({ id, data, markerStart, markerEnd }
     if (data.sweep) return sendParticle(particles.current, motionPath.current, { r: 3, className: 'particle selection-particle' });
   }, [data?.city, data?.hot, data?.flow, data?.sweep, path]);
   if (data?.city) return <g><BaseEdge id={id} path={path} interactionWidth={12} style={{ stroke: 'transparent' }} /><title>{data.description}</title></g>;
+  const at = data?.label ? pointAlong(data.points, 0.5) : null;
   return (
-    <g className={`flow-edge${data?.hot ? ' hot' : ''}`}>
-      <BaseEdge id={id} path={path} markerStart={markerStart} markerEnd={markerEnd} interactionWidth={16} />
-      <path ref={motionPath} d={path} fill="none" stroke="none" aria-hidden="true" />
-      <g ref={particles} aria-hidden="true" />
-      <title>{data?.description}</title>
-    </g>
+    <>
+      <g className={`flow-edge${data?.hot ? ' hot' : ''}`}>
+        <BaseEdge id={id} path={path} markerStart={markerStart} markerEnd={markerEnd} interactionWidth={16} />
+        <path ref={motionPath} d={path} fill="none" stroke="none" aria-hidden="true" />
+        <g ref={particles} aria-hidden="true" />
+        <title>{data?.description}</title>
+      </g>
+      {at ? (
+        <EdgeLabelRenderer>
+          <span aria-hidden="true" className={`flow-edge-label${data!.hot ? ' is-hot' : ''}${data!.muted ? ' is-dim' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)` }}>
+            {data!.label}
+          </span>
+        </EdgeLabelRenderer>
+      ) : null}
+    </>
   );
 });
 
@@ -208,7 +218,7 @@ export const FlowCanvas = forwardRef<CityRenderer, RendererCallbacks & { city?: 
     return {
       id: p.node.id, type: 'component', position: { x: p.x, y: p.y }, width: nodeWidth, height: nodeHeight,
       selected: p.node.id === highlight.selected, selectable: !removed, focusable: !removed,
-      ariaRole: 'button', ariaLabel: `${p.node.label}, ${KIND_LABEL[p.node.kind]}${marks.has(p.node.id) ? `, ${marks.get(p.node.id)}` : ''}`,
+      ariaRole: 'button', ariaLabel: `${p.node.label}, ${kindLabel(p.node)}${marks.has(p.node.id) ? `, ${marks.get(p.node.id)}` : ''}`,
       data: { node: p.node, mark: marks.get(p.node.id), dim: inactive && !emphasis.soft, faded: inactive && emphasis.soft, match: !!highlight.matches?.has(p.node.id), exiting: removed, city, roofTransform },
     };
   }), [layout, shownLayout, city, roofTransform, nodeWidth, nodeHeight, exiting, marks, highlight.selected, highlight.matches, emphasis]);
@@ -228,7 +238,9 @@ export const FlowCanvas = forwardRef<CityRenderer, RendererCallbacks & { city?: 
       id: edge.id, source: edge.source, target: edge.target, type: 'dependency', selectable: false,
       className: `${linkClass(edge)}${inactive ? emphasis.soft ? ' is-faded' : ' is-dim' : ''}`,
       markerEnd: marker, markerStart: role === 'readwrite' ? marker : undefined,
-      data: { points: p.points, hot, flow: highlight.flow && !!highlight.focus && !highlight.frame, sweep: highlight.selected && sweepEdges.has(edge.id) ? sweep : 0, city,
+      data: { points: p.points, hot, flow: highlight.flow && !!highlight.focus && !highlight.frame, sweep: highlight.selected && sweepEdges.has(edge.id) ? sweep : 0, city, muted: inactive,
+        // System-view links merge many component links; name what they carry on the line itself.
+        label: edge.meta?.system ? `${edgeVerbs(edge.kinds)}${edge.weight > 1 ? ` ×${edge.weight}` : ''}` : undefined,
         description: `${source} → ${target}: ${edgeVerbs(edge.kinds)}${edge.weight > 1 ? ` ×${edge.weight}` : ''}${edge.via?.length ? ` via ${edge.via.join(' › ')}` : ''}${edge.meta?.flipped ? ' (arrow follows the data)' : ''}` },
     };
     });

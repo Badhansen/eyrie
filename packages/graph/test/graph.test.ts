@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FixtureRepo } from './fixture.js';
+import { FixtureRepo, memoryIndex } from './fixture.js';
 
 const R = 'src/services/order.service.ts';
 
@@ -127,5 +127,28 @@ describe('external services by URL', () => {
     expect(providerForUrl('https://api.stripe.com:param')?.label).toBe('Stripe');
     expect(providerForUrl('https://api.github.com/repos/:param')?.label).toBe('GitHub API');
     expect(providerForUrl('https://:param/v1')).toBeNull();
+  });
+});
+
+describe('HTTP calls in a monorepo with several Next.js apps', () => {
+  const files = {
+    'apps/admin/src/app/api/products/route.ts': `export async function POST() { return Response.json({}); }`,
+    'apps/admin/src/app/products/page.tsx': `export default function ProductsPage() { fetch('/api/products', { method: 'POST' }); return null; }`,
+    'apps/store/src/app/api/cart/route.ts': `export async function GET() { return Response.json({}); }`,
+    'apps/store/src/app/account/page.tsx': `export default function AccountPage() { fetch('/api/products', { method: 'POST' }); return null; }`,
+    'apps/spa/src/main.ts': `export function load() { return fetch('/api/products', { method: 'POST' }); }`,
+  };
+
+  it('links each app to its own routes and reports calls to a sibling app as missing', async () => {
+    const index = await memoryIndex(files);
+    const s = index.store;
+    const calls = [...s.edges()]
+      .filter((e) => e.kind === 'HTTP_CALL')
+      .map((e) => `${s.getNode(e.source)?.file} -> ${s.getNode(e.target)?.file ?? 'missing'}`);
+    expect(calls).toContain('apps/admin/src/app/products/page.tsx -> apps/admin/src/app/api/products/route.ts');
+    // The store app serves its own /api and has no /api/products; it cannot reach the admin app's route.
+    expect(calls).toContain('apps/store/src/app/account/page.tsx -> missing');
+    // A frontend outside any Next.js app may be proxied to any server, so it still links.
+    expect(calls).toContain('apps/spa/src/main.ts -> apps/admin/src/app/api/products/route.ts');
   });
 });

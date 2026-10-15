@@ -41,6 +41,13 @@ function Hint() {
   const view = useStore((s) => s.view);
   const lens = useStore((s) => s.lens);
   if (selected || lens === 'sequence') return null;
+  if (lens === 'system') {
+    return (
+      <p className="pointer-events-none absolute bottom-3 left-4 hidden max-w-[62%] rounded bg-ink-0/75 px-2 py-1 font-mono text-[10.5px] leading-relaxed text-faint backdrop-blur-sm md:block">
+        Each box groups one part of the system · select a box to see what it holds · <kbd>2</kbd> every component
+      </p>
+    );
+  }
   if (lens === 'dataflow') {
     return (
       <p className="pointer-events-none absolute bottom-3 left-4 hidden max-w-[62%] rounded bg-ink-0/75 px-2 py-1 font-mono text-[10.5px] leading-relaxed text-faint backdrop-blur-sm md:block">

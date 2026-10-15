@@ -31,7 +31,7 @@ file watcher ── changed files only ───────────┘   di
 | `@eyrie/parser` | tree-sitter language adapters → facts; Prisma schema reader | `web-tree-sitter`, `tree-sitter-typescript`, `tree-sitter-javascript` |
 | `@eyrie/graph` | Module resolution, relationship resolution, incremental code graph, queries | `graphology` |
 | `@eyrie/architecture` | Code graph → architecture graph: classification, lifting, pass-through edges | core, graph |
-| `@eyrie/lens` | Pure views over the architecture graph: data flow, sequence | core |
+| `@eyrie/lens` | Pure views over the architecture graph: data flow, sequence, System (components grouped by app or package and layer) | core |
 | `@eyrie/storage` | SQLite persistence: facts cache, nodes, edges, meta | `node:sqlite` (built-in) |
 | `@eyrie/engine` | Scanning, ignore rules, project config, watching, update pipeline | `chokidar`, `ignore`, `json5` |
 | `@eyrie/server` | CLI, HTTP API, WebSocket, static hosting, editor launch | `ws` |
@@ -109,6 +109,7 @@ Eyrie is **not hosted**. There is no production environment in the web sense; th
 | Local use | `pnpm start -- /path/to/repo` — builds the UI, indexes, serves and opens the browser |
 | Test | `pnpm test` (vitest, hermetic and offline, against the fixture) |
 | Smoke | `pnpm smoke:fetch` then `pnpm smoke` — scans a real third-party repo cloned into the git-ignored `.smoke/` |
+| Architecture review | `pnpm arch scan` / `pnpm arch report` — deterministic checks on this repository with a local, git-ignored history in `.eyrie/knowledge.db`; see [`scripts/arch-review`](../../scripts/arch-review/README.md) |
 
 **Requirements:** Node.js ≥ 22.13 (for `node:sqlite`), pnpm 9.15.0. ES modules throughout, TypeScript ~5.9.
 

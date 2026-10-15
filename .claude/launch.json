@@ -35,6 +35,21 @@
         "dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "eyrie-smoke",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "packages/server/src/cli.ts",
+        ".smoke/next-prisma-tailwind-ecommerce",
+        "--port",
+        "4320",
+        "--no-open",
+        "--token",
+        "demo"
+      ],
+      "port": 4320
     }
   ]
 }

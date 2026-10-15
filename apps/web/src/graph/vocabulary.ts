@@ -1,5 +1,5 @@
 import type { ArchCategory, ArchEdge, ArchKind, ArchLane, ArchNode, CodeEdgeKind } from '@eyrie/core';
-import type { DataRole } from '@eyrie/lens';
+import type { DataRole, SystemLayer, SystemPart } from '@eyrie/lens';
 
 export const CATEGORY_LABEL: Record<ArchCategory, string> = {
   frontend: 'Frontend',
@@ -51,6 +51,18 @@ const EDGE_VERB: Partial<Record<CodeEdgeKind, string>> = {
   SUBSCRIBES: 'subscribes',
   TRIGGERS: 'triggers',
 };
+
+const LAYER_LABEL: Record<SystemLayer, string> = { ui: 'Frontend', api: 'API', services: 'Services', data: 'Data' };
+
+/** What kind of thing a node is; for a System-view box, the layer it groups and how many components. */
+export function kindLabel(n: ArchNode): string {
+  const part = n.meta?.system as SystemPart | undefined;
+  return part ? `${LAYER_LABEL[part.layer]} · ${part.members.length}` : KIND_LABEL[n.kind];
+}
+
+export function systemPart(n: ArchNode): SystemPart | null {
+  return (n.meta?.system as SystemPart | undefined) ?? null;
+}
 
 export function edgeVerbs(kinds: CodeEdgeKind[]): string {
   return kinds.map((k) => EDGE_VERB[k] ?? k.toLowerCase()).join(' · ');
