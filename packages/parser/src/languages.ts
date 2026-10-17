@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { basename, join } from 'node:path';
 import { Language, Parser } from 'web-tree-sitter';
 import type { SourceLanguage } from '@eyrie/core';
 
@@ -54,15 +55,36 @@ export function detectLanguage(path: string): SourceLanguage | null {
   return EXTENSIONS[path.slice(dot).toLowerCase()] ?? null;
 }
 
+const RUNTIME_WASM = 'web-tree-sitter/web-tree-sitter.wasm';
+
+/**
+ * Every WASM file the parser loads: tree-sitter's runtime and each grammar.
+ * A bundled build (the desktop app) copies these into one folder and points
+ * `EYRIE_GRAMMAR_DIR` at it, because it has no `node_modules` to resolve from.
+ */
+export function grammarFiles(): string[] {
+  return [...new Set([RUNTIME_WASM, ...Object.values(GRAMMARS)])].map((f) => require.resolve(f));
+}
+
+/** Read when the first file is parsed, so a host can set it after importing the parser. */
+function grammarDir(): string | undefined {
+  return process.env.EYRIE_GRAMMAR_DIR || undefined;
+}
+
+function wasmPath(file: string, dir = grammarDir()): string {
+  return dir ? join(dir, basename(file)) : require.resolve(file);
+}
+
 let initPromise: Promise<void> | null = null;
 const languages = new Map<GrammarLanguage, Promise<Language>>();
 
 export async function loadLanguage(lang: GrammarLanguage): Promise<Language> {
-  initPromise ??= Parser.init();
+  const dir = grammarDir();
+  initPromise ??= Parser.init(dir ? { locateFile: (name: string) => join(dir, name) } : undefined);
   await initPromise;
   let pending = languages.get(lang);
   if (!pending) {
-    pending = Language.load(require.resolve(GRAMMARS[lang]));
+    pending = Language.load(wasmPath(GRAMMARS[lang], dir));
     languages.set(lang, pending);
   }
   return pending;
