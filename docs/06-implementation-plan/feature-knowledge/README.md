@@ -219,7 +219,7 @@ The prototype's store ([`scripts/arch-review/db.ts`](../../../scripts/arch-revie
 
 ## 12. Desktop app (Phase D)
 
-A Tauri shell running one engine sidecar per watched project (loopback, random port, per-run token, as today), watching in the background from the tray. Notifications are off by default and, when on, limited to new, non-baseline, warning-or-worse findings after a quiet period. GUI apps on macOS get a minimal `PATH`, so the login shell's `PATH` is read once and explicit binary paths are allowed. API keys live in the OS keychain only. `node:sqlite` needs Node 22.13+, so a pinned Node ships with the sidecar. A signed binary is gated by the AGPL-3.0 / `elkjs` licensing review in [docs/06 §5](../README.md).
+An Electron app ([`apps/desktop`](../../../apps/desktop/README.md), built with Electron Forge) running the engine in a utility process per watched project (loopback, random port, per-run token, as today), watching in the background from the tray. Notifications are off by default and, when on, limited to new, non-baseline, warning-or-worse findings after a quiet period. GUI apps on macOS get a minimal `PATH`, so the login shell's `PATH` is read once (the first version does this) and explicit binary paths are allowed. API keys live in the OS keychain only. `node:sqlite` needs Node 22.13+; Electron 44 runs Node 24, so no separate Node ships with the app. A signed binary is gated by the AGPL-3.0 / `elkjs` licensing review in [docs/06 §5](../README.md).
 
 ## 13. UI surfaces
 
@@ -238,7 +238,7 @@ A Tauri shell running one engine sidecar per watched project (loopback, random p
 | Change history | Browser memory, 240 batches | Server-side record |
 | Feedback, adaptation | Prototype records triage and decisions | Candidate generation, preview, gate, versioned policy |
 | AI explanations | — | Gate, one tool-free adapter, validation |
-| Desktop shell | Planned | Tauri, sidecar supervisor |
+| Desktop shell | First version: one window, one project, engine in a utility process; packages on macOS | Tray, background watching, several projects, signing |
 
 ## 15. Build order
 

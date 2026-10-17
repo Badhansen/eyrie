@@ -118,6 +118,7 @@ packages/
   server/        CLI, HTTP API and WebSocket
 apps/
   web/           React UI: ELK layout, React Flow navigation, Three.js 3D city, anime.js animation
+  desktop/       Electron shell (Electron Forge): runs the engine in a utility process and shows the UI
 fixtures/
   bookstore-app/ sample Next.js app used by tests and demos
 scripts/
@@ -130,6 +131,7 @@ THIRD-PARTY-NOTICES.md  licences of bundled dependencies and fonts
 pnpm test          # parser, graph, architecture, lens, engine (real file watcher) and server tests
 pnpm typecheck
 pnpm dev           # engine on :4319 (fixture app, token "dev") + UI with hot reload on :5173
+pnpm desktop       # the desktop app (Electron); see apps/desktop/README.md
 
 pnpm smoke:fetch   # clone a real MIT-licensed Next.js app into .smoke/ (once)
 pnpm smoke         # scan that real repo end to end; skips if it was never fetched
@@ -152,14 +154,14 @@ To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed`
 
 ## Roadmap
 
-- [x] **Phase 1: static architecture map.** Scanner, tree-sitter parsing, symbols, imports/exports, calls, React and Next.js detection, code graph, architecture graph, D3 map, details panel.
+- [x] **Phase 1: static architecture map.** Scanner, tree-sitter parsing, symbols, imports/exports, calls, React and Next.js detection, code graph, architecture graph, interactive map, details panel.
 - [x] **Phase 2: live graph.** File watcher, incremental resolution with reverse-dependency invalidation, graph diffs, WebSocket events, animated updates, stable layout, change tape.
 - [ ] **Phase 3: navigation.** Done: search, open in editor, jump to line, category filters, data-flow, sequence and System lenses. Next: nested group boundaries, expanding a box in place.
 - [ ] **Phase 4: graph intelligence.** Done: trace (downstream) and impact (upstream) on the architecture graph. Next: shortest path between two components, code-level impact.
 - [ ] **Phase 5: AI understanding.** Optional, graph-backed summaries and Q&A (local models via Ollama first).
 - [ ] **Phase 6: Git intelligence.** Working-tree overlays, branch and commit architecture diffs, timeline.
 - [ ] **Phase 7: coding-agent integration.** Attribute changes to agent sessions (for example via Claude Code hooks), and expose the graph to agents over MCP.
-- [ ] **Desktop app.** A Tauri shell around the same UI, running the engine as a sidecar.
+- [ ] **Desktop app.** An Electron shell (Electron Forge) around the same UI, running the engine in a utility process. A first, unsigned version packages and runs on macOS from [`apps/desktop`](apps/desktop/README.md); signing, installers for every platform and background watching are next.
 
 ## Known limitations
 

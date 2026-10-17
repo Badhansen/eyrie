@@ -58,7 +58,7 @@ All four are technical, run the tool on their own machine, and already have the 
 - Optional graph-backed AI summaries and Q&A, local models first (Phase 5).
 - Git overlays, branch/commit architecture diffs, timeline (Phase 6).
 - Agent-session attribution and an MCP surface for agents (Phase 7).
-- Tauri desktop shell with the engine as a sidecar.
+- Electron desktop app (Electron Forge) with the engine in a utility process; a first version is in `apps/desktop`.
 
 ### Explicitly out of scope
 
@@ -119,7 +119,7 @@ Eyrie has no editorial content. The text users read is derived from their own re
 - Should classification rules be user-extensible (a config file of lane/category rules) before Phase 5, given that non-Next.js layouts need tuning?
 - Does Phase 5 AI stay strictly local (Ollama), or is an opt-in remote model acceptable given the privacy promise?
 - Express router prefixes (`app.use('/api', router)`) are not joined to their routes yet — is that a Phase 3 correctness fix or a known limitation we document and defer?
-- Is the desktop (Tauri) shell a prerequisite for a wider release, or does the CLI remain the primary distribution?
+- Is the desktop (Electron) app a prerequisite for a wider release, or does the CLI remain the primary distribution?
 
 ## Completion checklist
 
