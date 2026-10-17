@@ -13,7 +13,8 @@
     "start": "pnpm resources && electron-forge start",
     "package": "pnpm resources && electron-forge package",
     "make": "pnpm resources && electron-forge make",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "icons": "electron scripts/make-icons.mjs"
   },
   "devDependencies": {
     "@electron-forge/cli": "8.0.1",

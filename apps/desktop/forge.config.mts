@@ -12,12 +12,15 @@ const config: ForgeConfig = {
     executableName: 'eyrie',
     appBundleId: 'io.github.badhansen.eyrie',
     asar: true,
+    // assets/icon.icns on macOS, assets/icon.ico on Windows; `pnpm icons` renders them from assets/icon.svg.
+    icon: 'assets/icon',
     // Read from disk at run time, so they ship next to the app rather than inside the bundle.
-    // `pnpm resources` (scripts/prepare-resources.ts) fills these folders.
-    extraResource: ['resources/web', 'resources/grammars'],
+    // `pnpm resources` (scripts/prepare-resources.ts) fills these folders, and copies the
+    // icon the window shows on Linux.
+    extraResource: ['resources/web', 'resources/grammars', 'resources/icon.png'],
   },
   rebuildConfig: {},
-  makers: [new MakerZIP({}, ['darwin']), new MakerSquirrel({}), new MakerDeb({})],
+  makers: [new MakerZIP({}, ['darwin']), new MakerSquirrel({ setupIcon: 'assets/icon.ico' }), new MakerDeb({ options: { icon: 'assets/icon.png' } })],
   plugins: [
     new VitePlugin({
       build: [

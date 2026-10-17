@@ -117,6 +117,8 @@ function ensureWindow(): BrowserWindow {
     minWidth: 960,
     minHeight: 600,
     title: 'Eyrie',
+    // macOS and Windows take the icon from the app bundle and the executable; Linux takes it from the window.
+    ...(process.platform === 'linux' ? { icon: join(resourcesDir(), 'icon.png') } : {}),
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: join(__dirname, 'preload.cjs') },
   });
   // The UI only ever talks to its own engine; everything else opens in the user's browser.
@@ -478,6 +480,8 @@ app.on('will-quit', (event) => {
 });
 
 void app.whenReady().then(async () => {
+  // Unpackaged, the Dock would show Electron's icon.
+  if (!app.isPackaged) app.dock?.setIcon(join(resourcesDir(), 'icon.png'));
   store = new ProjectStore(join(app.getPath('userData'), 'projects.json'));
   protocol.handle('eyrie', serveApp);
   registerIpc();

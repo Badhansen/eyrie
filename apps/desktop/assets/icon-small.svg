@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Eyrie's app icon at 16 and 32 pt: icon.svg without the dimmed graph, the glow
+    and the node rings, with heavier strokes, so the trace still reads at a few
+    pixels. The geometry is the favicon's (apps/web/public/favicon.svg) on the macOS grid.
+  -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#20262b"/>
+      <stop offset="1" stop-color="#111416"/>
+    </linearGradient>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.36"/>
+    </filter>
+  </defs>
+
+  <g id="shadow">
+    <rect x="100" y="100" width="824" height="824" rx="185" fill="#0d1012" filter="url(#drop)"/>
+  </g>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)"/>
+  <path d="M280 357H460V666H744" fill="none" stroke="#58d68d" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="280" cy="357" r="92" fill="#7aa7ff"/>
+  <circle cx="460" cy="512" r="92" fill="#f5a25d"/>
+  <circle cx="744" cy="666" r="92" fill="#47c9d6"/>
+</svg>

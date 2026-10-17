@@ -29,20 +29,23 @@ pnpm desktop                                                    # start on the P
 pnpm --filter @eyrie/desktop start -- ../../fixtures/bookstore-app  # open one directly
 pnpm --filter @eyrie/desktop package                            # out/Eyrie-<platform>-<arch>/
 pnpm --filter @eyrie/desktop make                               # installers: zip (macOS), Squirrel (Windows), deb (Linux)
+pnpm --filter @eyrie/desktop icons                              # re-render assets/icon.{icns,ico,png} after editing the SVGs
 ```
 
-Each of these first runs `pnpm resources`, which builds the web UI and copies it, with tree-sitter's WASM files, into `resources/`. The first run downloads the Electron binary.
+Each of these but `icons` first runs `pnpm resources`, which builds the web UI and copies it, with tree-sitter's WASM files and the icon, into `resources/`. The first run downloads the Electron binary.
 
 ## How it is built
 
 | File | Role |
 | --- | --- |
-| `forge.config.mts` | Packaging, makers, the Vite plugin's two build targets, and Electron fuses |
+| `forge.config.mts` | Packaging, the icon, makers, the Vite plugin's build targets, and Electron fuses |
 | `vite.main.config.mts` | Main process → `.vite/build/main.cjs` (the plugin's defaults) |
 | `vite.host.config.mts` | Engine host → `.vite/build/engine-host.mjs`, an ES module: `@eyrie/storage` loads `node:sqlite` with a top-level await |
 | `src/preload.ts` | The window's sandboxed preload → `.vite/build/preload.cjs` (Forge's preload target, with `vite.main.config.mts`) |
 | `src/projects.ts` | The project list (`ProjectStore`): JSON in the user-data folder, written atomically; tested in Node |
-| `scripts/prepare-resources.ts` | Fills `resources/web` and `resources/grammars`, which ship as extra resources next to `app.asar` |
+| `scripts/prepare-resources.ts` | Fills `resources/web`, `resources/grammars` and `resources/icon.png`, which ship as extra resources next to `app.asar` |
+| `assets/icon.svg`, `assets/icon-small.svg` | The app icon's source: the favicon's request trace on the macOS icon grid. The small one, with heavier strokes and no background graph, is drawn at 16 and 32 pt |
+| `scripts/make-icons.mjs` | `pnpm icons`: draws both SVGs with Electron and writes `assets/icon.icns` (macOS), `icon.ico` (Windows, cropped to the body) and `icon.png` (Linux and the window, 512 px). It writes the ICNS and ICO containers itself, so it needs no other tools |
 
 Everything the app runs is bundled by Vite, so every package is a dev dependency and no `node_modules` ships with the app. Two settings make this work:
 
@@ -53,7 +56,7 @@ Everything the app runs is bundled by Vite, so every package is a dev dependency
 
 ## Not done yet
 
-- No app icon, code signing or notarization. A signed binary is gated by the AGPL-3.0 / `elkjs` licensing review in [docs/06 §5](../../docs/06-implementation-plan/README.md).
+- No code signing or notarization. A signed binary is gated by the AGPL-3.0 / `elkjs` licensing review in [docs/06 §5](../../docs/06-implementation-plan/README.md).
 - Scans report no progress while they run, only elapsed time: the engine indexes in one pass and logs once at the end.
 - No auto-update, tray, background watching or notifications (see [feature-knowledge §12](../../docs/06-implementation-plan/feature-knowledge/README.md)).
 - "Open in editor" relies on the login shell's `PATH`, read once when the packaged app starts; set `EYRIE_EDITOR` if your editor is not found.
