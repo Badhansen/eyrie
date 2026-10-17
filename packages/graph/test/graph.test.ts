@@ -152,3 +152,43 @@ describe('HTTP calls in a monorepo with several Next.js apps', () => {
     expect(calls).toContain('apps/spa/src/main.ts -> apps/admin/src/app/api/products/route.ts');
   });
 });
+
+describe('import edges merged from several statements', () => {
+  const importOf = async (a: string) => {
+    const index = await memoryIndex({
+      'src/a.ts': a,
+      'src/b.ts': `export interface Thing { id: string }\nexport function make(): Thing { return { id: '1' }; }\n`,
+    });
+    const s = index.store;
+    const edges = [...s.edges()].filter((e) => e.kind === 'IMPORTS' && s.getNode(e.source)?.file === 'src/a.ts' && s.getNode(e.target)?.file === 'src/b.ts');
+    expect(edges).toHaveLength(1);
+    return edges[0]!;
+  };
+
+  it('keeps a runtime import that follows a type-only one', async () => {
+    const e = await importOf(`import type { Thing } from './b';\nimport { make } from './b';\nexport const x: Thing = make();\n`);
+    expect(e.meta?.typeOnly).toBeUndefined();
+    expect(e.line).toBe(2);
+    expect(e.meta?.names).toEqual(['Thing', 'make']);
+    expect(e.meta?.count).toBe(2);
+  });
+
+  it('stays a runtime import when a type-only import follows it', async () => {
+    const e = await importOf(`import { make } from './b';\nimport type { Thing } from './b';\nexport const x: Thing = make();\n`);
+    expect(e.meta?.typeOnly).toBeUndefined();
+    expect(e.line).toBe(1);
+  });
+
+  it('becomes a dynamic import, not a static one, when a dynamic import follows a type-only one', async () => {
+    const e = await importOf(`import type { Thing } from './b';\nexport async function load(): Promise<Thing> { const m = await import('./b'); return m.make(); }\n`);
+    expect(e.meta?.typeOnly).toBeUndefined();
+    expect(e.meta?.dynamic).toBe(true);
+    expect(e.line).toBe(2);
+  });
+
+  it('stays type-only while every statement is', async () => {
+    const e = await importOf(`import type { Thing } from './b';\nimport type { Thing as T2 } from './b';\nexport type X = Thing | T2;\n`);
+    expect(e.meta?.typeOnly).toBe(true);
+    expect(e.line).toBe(1);
+  });
+});

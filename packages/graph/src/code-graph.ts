@@ -138,6 +138,11 @@ function modelOf(facts: FileFacts | undefined, qualifiedName: string): ModelFact
   return facts?.models?.find((m) => m.symbol === qualifiedName);
 }
 
+/** How much an import edge's statement makes one file depend on another: type-only < dynamic < static. Other edges are static. */
+function importStrength(meta: Record<string, unknown> | undefined): number {
+  return meta?.typeOnly ? 0 : meta?.dynamic ? 1 : 2;
+}
+
 const importIndexes = new WeakMap<FileFacts, Map<string, { source: string; spec: ImportSpecifier; typeOnly: boolean }>>();
 function importBinding(facts: FileFacts, local: string) {
   let idx = importIndexes.get(facts);
@@ -647,7 +652,18 @@ export class GraphIndex {
     const id = idFor(keys.edge(kind, source, target));
     const prev = ctx.edges.get(id);
     if (prev) {
-      prev.meta = { ...prev.meta, count: ((prev.meta?.count as number | undefined) ?? 1) + 1 };
+      const merged: Record<string, unknown> = { ...prev.meta, count: ((prev.meta?.count as number | undefined) ?? 1) + 1 };
+      // Several import statements of one file share an edge. The edge is as strong as the
+      // strongest of them and points at its line, so a runtime import that follows a
+      // type-only one is never hidden.
+      if (importStrength(meta) > importStrength(prev.meta)) {
+        delete merged.typeOnly;
+        delete merged.dynamic;
+        if (meta?.dynamic) merged.dynamic = true;
+        if (line) prev.line = line;
+      }
+      if (Array.isArray(prev.meta?.names) && Array.isArray(meta?.names)) merged.names = [...new Set([...(prev.meta.names as string[]), ...(meta.names as string[])])];
+      prev.meta = merged;
       prev.confidence = Math.max(prev.confidence, confidence);
       return;
     }
