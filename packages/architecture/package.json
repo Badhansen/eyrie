@@ -10,8 +10,5 @@
   "dependencies": {
     "@eyrie/core": "workspace:*",
     "@eyrie/graph": "workspace:*"
-  },
-  "devDependencies": {
-    "@eyrie/parser": "workspace:*"
   }
 }

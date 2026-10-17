@@ -1,9 +1,10 @@
-import { Database, GitBranch, Layers, ListOrdered, Map as MapIcon, Search, X } from 'lucide-react';
+import { ChevronLeft, Database, GitBranch, Layers, ListOrdered, Map as MapIcon, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import type { ArchCategory } from '@eyrie/core';
 import { matches } from '../graph/analysis';
 import { useLensGraph } from '../graph/useLensGraph';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../graph/vocabulary';
+import { desktop, projectsShortcut } from '../lib/desktop';
 import { store, useStore, type ConnectionStatus, type Lens } from '../state/store';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -23,7 +24,14 @@ export function TopBar() {
     <header className="eyrie-topbar">
       <div className="navbar-primary">
         <div className="navbar-identity">
-          <span className="navbar-brand">Eyrie</span>
+          {desktop ? (
+            <button type="button" className="navbar-back" onClick={() => desktop!.showProjects()} title={`All projects (${projectsShortcut})`}>
+              <ChevronLeft size={15} aria-hidden="true" />
+              Projects
+            </button>
+          ) : (
+            <span className="navbar-brand">Eyrie</span>
+          )}
           <span className="navbar-divider" aria-hidden="true" />
           <GitBranch size={15} className="navbar-repo-icon" aria-hidden="true" />
           <h1 title={repo?.name}>{repo?.name ?? 'Connecting…'}</h1>

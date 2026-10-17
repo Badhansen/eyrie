@@ -52,13 +52,13 @@ The third position, increasingly the point: **codebases are now modified by agen
 
 **Shipped (Phases 1–2, end to end):** repository indexing with content-hash caching; the six-lane architecture map; all four lenses; 2D and 3D views; live updates with diff-driven animation and the change tape; details panel (purpose, source preview, open in editor, calls / used by, symbols); trace (downstream) and impact (upstream); search, category filters, fit, keyboard navigation.
 
-**Planned:** collapse/expand and semantic zoom (3); shortest path and code-level impact (4); graph-backed AI summaries and Q&A (5); git overlays, branch/commit diffs, timeline (6); agent-session attribution and an MCP surface (7); a Tauri desktop shell with the engine as a sidecar.
+**Planned:** collapse/expand and semantic zoom (3); shortest path and code-level impact (4); graph-backed AI summaries and Q&A (5); git overlays, branch/commit diffs, timeline (6); agent-session attribution and an MCP surface (7); an Electron desktop app (Electron Forge) running the engine in a utility process. A first, unsigned version packages and runs on macOS from `apps/desktop`; it is not distributed.
 
 **Detection is heuristic but inspectable.** Classification follows framework conventions and names (Next.js App/Pages Router, `'use server'`, Express-style routers, `*Service`/`*Repository`, React components, hooks). Presentational components, hooks, helpers and SDK wrappers are lifted out and edges pass through them, so a typical app reduces to 20–50 components. A doc comment on a component's main export overrides the derived description.
 
 **Hard constraints:**
 
-- TypeScript/JavaScript only, for now.
+- Languages: TypeScript/JavaScript, Python, Go, Java, C#, PHP, Ruby and Rust. JavaScript (Next.js, Node.js) has the deepest support; Kotlin, Swift and C/C++ are not parsed.
 - No control-flow analysis — so no branch, retry or terminal-state workflow views.
 - No editing code from the map. Eyrie reads; your editor writes.
 - No cloud component, no account system, no telemetry.
@@ -72,7 +72,7 @@ The third position, increasingly the point: **codebases are now modified by agen
 - No telemetry remains out of scope regardless. The AI decision covers inference, not analytics.
 - This decision supersedes the open question in [docs/01 §9](docs/01-product-requirements/README.md); the README privacy section and PRD scope list still assert the absolute and will need updating.
 
-**Explicitly open:** whether classification rules become user-extensible via config; whether unjoined Express router prefixes (`app.use('/api', router)`) are a correctness fix or a documented limitation; whether the Tauri shell gates a wider release or the CLI remains primary distribution.
+**Explicitly open:** whether classification rules become user-extensible via config; whether unjoined Express router prefixes (`app.use('/api', router)`) are a correctness fix or a documented limitation; whether the desktop app gates a wider release or the CLI remains primary distribution.
 
 ## Brand Commitments
 
@@ -94,7 +94,7 @@ The third position, increasingly the point: **codebases are now modified by agen
 
 **Absences that must not be fabricated:** no users, no customers, no testimonials, no press, no adoption numbers, no benchmarks, no pricing, no hosted demo, no public website, no published binary, no launch date. The "20–50 components for a typical app" figure is currently **unevidenced** and flagged as such in docs/07 §13 — measure it before repeating it as a claim.
 
-**Launch status: Hold.** Eight actions are open before public launch, including: no operator identity or contact published, no `SECURITY.md` or vulnerability-reporting route, `--color-faint` failing AA at the sizes it is used, and OFL fonts bundled without a `THIRD-PARTY-NOTICES.md`. Do not describe Eyrie as launched or publicly available.
+**Launch status: Hold.** Two actions are open before public launch ([docs/07](docs/07-launch-readiness/README.md) actions 10 and 11): screen-reader structure and information, and readability — `--color-faint` fails AA at the sizes it is used. Do not describe Eyrie as launched or publicly available.
 
 ## Product Principles
 
