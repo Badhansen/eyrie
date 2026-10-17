@@ -98,6 +98,9 @@ button:disabled {
 .navbar-tools .navbar-search { flex: 1; max-width: 300px; }
 .navbar-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .navbar-brand { font-size: 17px; font-weight: 750; }
+/* In the desktop app the brand gives way to a route back to the Projects page. */
+.navbar-back { display: flex; align-items: center; gap: 4px; flex-shrink: 0; height: 32px; margin-left: -8px; padding: 0 10px 0 6px; border-radius: 5px; color: var(--color-dim); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+.navbar-back:hover { background: var(--color-ink-3); color: var(--color-text); }
 .navbar-divider { height: 20px; width: 1px; flex-shrink: 0; background: var(--color-rule-strong); }
 .navbar-repo-icon { flex-shrink: 0; color: var(--color-faint); }
 .navbar-identity h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }

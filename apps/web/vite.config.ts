@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -26,5 +27,16 @@ export default defineConfig({
       '/ws': { target: engine.replace(/^http/, 'ws'), ws: true, changeOrigin: true },
     },
   },
-  build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 2000 },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('index.html', import.meta.url)),
+        // The desktop app's Projects page (apps/desktop serves it as eyrie://app/projects.html).
+        projects: fileURLToPath(new URL('projects.html', import.meta.url)),
+      },
+    },
+  },
 });

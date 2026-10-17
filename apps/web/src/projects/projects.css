@@ -1,0 +1,152 @@
+/*
+ * The desktop app's Projects page. It shares the map's shell — top bar,
+ * context row, tokens — and lays projects out as a ruled table: identity,
+ * what the last index found, when, and the actions.
+ */
+
+.projects-shell { display: flex; flex-direction: column; height: 100%; }
+.projects-bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 60px; padding: 10px 20px; }
+.projects-tools { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+.projects-tools .navbar-search { width: 280px; }
+.projects-summary { color: var(--color-dim); font: 11px var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.projects-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-faint); font-size: 11px; }
+
+/* ── buttons ─────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 5px;
+  background: var(--color-ink-2);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.btn:hover:not(:disabled) { background: var(--color-ink-3); }
+.btn:active:not(:disabled) { background: color-mix(in oklab, var(--color-ink-3) 70%, var(--color-rule-strong)); }
+.btn-primary { border-color: transparent; background: var(--color-text); color: var(--color-ink-0); }
+.btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-text) 84%, var(--color-ink-0)); }
+.btn-primary:active:not(:disabled) { background: color-mix(in oklab, var(--color-text) 74%, var(--color-ink-0)); }
+.btn-quiet { border-color: transparent; background: transparent; color: var(--color-dim); }
+.btn-quiet:hover:not(:disabled) { color: var(--color-text); }
+.btn-icon { width: 32px; padding: 0; }
+
+/* ── table ───────────────────────────────────────────────────────────── */
+.projects-main { flex: 1; min-height: 0; overflow-y: auto; }
+.projects-head,
+.project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1.5fr) minmax(112px, 0.6fr) 188px;
+  align-items: center;
+  gap: 28px;
+  padding-inline: 20px;
+}
+.projects-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 34px;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-ink-0);
+  color: var(--color-faint);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.project-row {
+  position: relative;
+  min-height: 72px;
+  padding-block: 14px;
+  border-bottom: 1px solid var(--color-rule);
+  transition: background-color 140ms ease;
+}
+.project-row:hover { background: var(--color-ink-1); }
+.projects-nomatch { padding: 28px 20px; color: var(--color-dim); }
+
+.project-identity { min-width: 0; }
+.project-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.project-title h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 650; line-height: 20px; }
+.project-path,
+.project-error,
+.project-frameworks { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-path { margin-top: 2px; color: var(--color-dim); font: 11px/1.5 var(--font-mono); }
+.project-error { margin-top: 4px; color: var(--color-removed); font-size: 12px; line-height: 1.4; }
+
+.project-status { --s: var(--color-dim); display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--color-dim); font: 10.5px var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.project-status[data-tone='live'] { --s: var(--color-new); color: var(--color-text); }
+.project-status[data-tone='busy'] { --s: var(--color-modified); }
+.project-status[data-tone='fault'] { --s: var(--color-removed); color: var(--color-removed); }
+.project-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--s); }
+.project-status[data-hollow] .dot { background: transparent; box-shadow: inset 0 0 0 1px var(--s); }
+
+.project-contents { min-width: 0; }
+.project-stats { display: flex; flex-wrap: wrap; gap: 2px 14px; color: var(--color-faint); font-size: 11px; white-space: nowrap; }
+.project-stats > div { display: flex; align-items: baseline; gap: 5px; }
+.project-stats dd { color: var(--color-text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.project-frameworks { margin-top: 5px; color: var(--color-faint); font: 10px var(--font-mono); }
+.project-never { color: var(--color-faint); font-size: 12px; }
+
+.project-when { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--color-dim); font-size: 12px; white-space: nowrap; }
+.project-when small { color: var(--color-faint); font: 10.5px var(--font-mono); }
+
+.project-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.project-actions .btn { height: 30px; }
+.project-actions .btn-open { min-width: 76px; }
+.project-actions .btn-slot { min-width: 72px; }
+.project-row:hover .project-actions .btn-quiet:hover:not(:disabled) { background: var(--color-ink-3); }
+
+/* A scan or open in progress: a sweep along the row's bottom rule. Queued work holds a faint track. */
+.project-progress { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; overflow: hidden; background: color-mix(in oklab, var(--color-modified) 18%, transparent); }
+.project-progress::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 28%; background: var(--color-modified); transform: translateX(-100%); animation: project-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.project-progress[data-waiting]::after { display: none; }
+@keyframes project-sweep {
+  to { transform: translateX(360%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-progress::after { width: 100%; transform: none; opacity: 0.55; }
+}
+
+/* ── empty state ─────────────────────────────────────────────────────── */
+.projects-empty { display: grid; place-items: center; min-height: 100%; padding: 32px 24px; }
+.projects-empty > div { width: 100%; max-width: 460px; }
+.projects-eyebrow { color: var(--color-faint); font: 10px var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.projects-empty h2 { margin-top: 8px; font-size: 20px; font-weight: 750; line-height: 1.2; }
+.projects-lede { margin-top: 12px; color: var(--color-dim); font-size: 13.5px; line-height: 1.6; }
+.projects-steps { margin-top: 22px; border-top: 1px solid var(--color-rule); }
+.projects-steps li { display: grid; grid-template-columns: 32px 56px 1fr; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--color-rule); color: var(--color-dim); font-size: 12.5px; }
+.projects-steps span { color: var(--color-faint); font: 10px var(--font-mono); }
+.projects-steps b { color: var(--color-text); font-weight: 650; }
+.projects-empty-actions { display: flex; align-items: center; gap: 14px; margin-top: 24px; color: var(--color-faint); font-size: 12px; }
+
+/* ── drop target ─────────────────────────────────────────────────────── */
+.projects-drop { position: fixed; inset: 0; z-index: 50; padding: 12px; background: color-mix(in oklab, var(--color-ink-0) 82%, transparent); pointer-events: none; }
+.projects-drop > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  border: 1.5px dashed var(--color-frontend);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--color-frontend) 6%, transparent);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 650;
+}
+.projects-drop svg { color: var(--color-frontend); }
+
+@media (max-width: 1099px) {
+  .projects-head,
+  .project-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(88px, 0.5fr) 188px; gap: 18px; }
+  .projects-tools .navbar-search { width: 220px; }
+  .projects-hint { display: none; }
+}

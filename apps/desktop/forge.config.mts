@@ -24,8 +24,11 @@ const config: ForgeConfig = {
         { entry: 'src/main.ts', config: 'vite.main.config.mts', target: 'main' },
         // The engine and its server, run as a utility process (see src/engine-host.ts).
         { entry: 'src/engine-host.ts', config: 'vite.host.config.mts', target: 'main' },
+        // The window's sandboxed preload (src/preload.ts) → .vite/build/preload.cjs.
+        { entry: 'src/preload.ts', config: 'vite.main.config.mts', target: 'preload' },
       ],
-      // No renderer of its own: the window shows the UI the engine serves on 127.0.0.1.
+      // No renderer of its own: the Projects page is built with the web UI (apps/web/projects.html)
+      // and served from resources/web, and a project's map is the UI its engine serves on 127.0.0.1.
       renderer: [],
     }),
     // Flipped at package time, before code signing.

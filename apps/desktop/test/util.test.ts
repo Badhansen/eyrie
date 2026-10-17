@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { projectFromArgs, statusPage } from '../src/util.js';
+import { findEditor, projectFromArgs, statusPage, tildify } from '../src/util.js';
 
 describe('projectFromArgs', () => {
   const dir = mkdtempSync(join(tmpdir(), 'eyrie-desktop-'));
@@ -41,5 +41,46 @@ describe('statusPage', () => {
     const page = html(statusPage(`Could not open /tmp/<img src=x onerror="alert('x')">`));
     expect(page).not.toContain('<img');
     expect(page).toContain('&#60;img src=x onerror=&#34;alert(&#39;x&#39;)&#34;&#62;');
+  });
+});
+
+describe('findEditor', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eyrie-editors-'));
+  const bin = (name: string, ...tools: string[]) => {
+    const path = join(dir, name);
+    mkdirSync(path);
+    for (const tool of tools) {
+      writeFileSync(join(path, tool), '');
+      chmodSync(join(path, tool), 0o755);
+    }
+    return path;
+  };
+  const first = bin('first', 'zed');
+  const second = bin('second', 'code', 'cursor');
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('prefers editors in the CLI\'s order, wherever they are on PATH', () => {
+    expect(findEditor([first, second].join(delimiter))).toEqual({ cmd: 'cursor', name: 'Cursor' });
+    expect(findEditor(first)).toEqual({ cmd: 'zed', name: 'Zed' });
+    expect(findEditor(join(dir, 'missing'))).toBeUndefined();
+  });
+
+  it('uses EYRIE_EDITOR alone when it is set, by name or absolute path', () => {
+    expect(findEditor(second, 'code')).toEqual({ cmd: 'code', name: 'code' });
+    expect(findEditor('', join(first, 'zed'))).toEqual({ cmd: join(first, 'zed'), name: 'zed' });
+    expect(findEditor(second, 'nvim')).toBeUndefined();
+  });
+});
+
+describe('tildify', () => {
+  it('writes paths inside home as ~', () => {
+    expect(tildify('/Users/ada/code/shop', '/Users/ada')).toBe('~/code/shop');
+    expect(tildify('/Users/ada', '/Users/ada')).toBe('~');
+  });
+
+  it('leaves other paths, and look-alike prefixes, as they are', () => {
+    expect(tildify('/Users/adam/shop', '/Users/ada')).toBe('/Users/adam/shop');
+    expect(tildify('/srv/shop', '/Users/ada')).toBe('/srv/shop');
+    expect(tildify('/srv/shop', '')).toBe('/srv/shop');
   });
 });
