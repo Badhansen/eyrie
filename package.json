@@ -27,7 +27,8 @@
     "test:watch": "vitest",
     "smoke:fetch": "bash scripts/fetch-smoke-repo.sh",
     "smoke": "vitest run --config vitest.smoke.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @eyrie/web typecheck"
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @eyrie/web typecheck && pnpm --filter @eyrie/desktop typecheck",
+    "desktop": "pnpm --filter @eyrie/desktop start"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

@@ -1,13 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { GraphEngine } from '@eyrie/engine';
-import { startServer } from './server.js';
-
-const DEFAULT_PORT = 4319;
+import { launch } from './launch.js';
 
 const HELP = `eyrie — live architecture graph for a codebase
 
@@ -48,44 +43,20 @@ async function main(): Promise<void> {
   const root = resolve(positionals[0] ?? process.cwd());
   const log = (m: string) => process.stdout.write(`[eyrie] ${m}\n`);
   log(`Indexing ${root}`);
-  const engine = new GraphEngine({ root, watch: !values['no-watch'], reset: values.reset, log });
-  engine.on('error', (err) => log(`error: ${err.message}`));
-  await engine.start();
-
-  const token = values.token ?? randomBytes(12).toString('base64url');
-  const webDir = fileURLToPath(new URL('../../../apps/web/dist', import.meta.url));
-  const server = await listen(values.port, (port) => startServer({ engine, host: values.host, port, token, webDir, log }));
-  const url = `${server.url}/?token=${encodeURIComponent(token)}`;
-  log(`Open ${url}`);
-  if (!values['no-open']) openBrowser(url);
+  const port = values.port === undefined ? undefined : Number(values.port);
+  const eyrie = await launch({ root, host: values.host, port, token: values.token, watch: !values['no-watch'], reset: values.reset, log }).catch((err: unknown) => {
+    if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') throw new Error(`Port ${values.port} is already in use. Choose another with --port, or use --port 0 for any free port.`);
+    throw err;
+  });
+  log(`Open ${eyrie.url}`);
+  if (!values['no-open']) openBrowser(eyrie.url);
 
   const shutdown = async () => {
-    await server.close();
-    await engine.stop();
+    await eyrie.close();
     process.exit(0);
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-}
-
-/** Uses the requested port, or the first free port from 4319 when none was given. */
-async function listen<T>(requested: string | undefined, start: (port: number) => Promise<T>): Promise<T> {
-  if (requested !== undefined) {
-    try {
-      return await start(Number(requested));
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') throw new Error(`Port ${requested} is already in use. Choose another with --port, or use --port 0 for any free port.`);
-      throw err;
-    }
-  }
-  for (let port = DEFAULT_PORT; port < DEFAULT_PORT + 20; port++) {
-    try {
-      return await start(port);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw err;
-    }
-  }
-  return start(0);
 }
 
 function openBrowser(url: string): void {

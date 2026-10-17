@@ -10,3 +10,7 @@ coverage/
 # Smoke-test clone of a real open-source repo (fetched by scripts/fetch-smoke-repo.sh)
 .smoke/
 docs/design.md
+
+# Desktop app build output and copied resources (apps/desktop/scripts/prepare-resources.ts)
+apps/desktop/out/
+apps/desktop/resources/

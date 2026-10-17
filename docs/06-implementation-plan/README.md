@@ -15,14 +15,14 @@
 
 | Phase | Deliverable | Completion condition | State |
 | --- | --- | --- | --- |
-| **1. Static architecture map** | Scanner, tree-sitter parsing, symbols, imports/exports, calls, React + Next.js detection, code graph, architecture graph, D3 map, details panel | A TS/JS repo indexes from one command and renders a readable lane-ordered map with working details | ✅ Done |
+| **1. Static architecture map** | Scanner, tree-sitter parsing, symbols, imports/exports, calls, React + Next.js detection, code graph, architecture graph, interactive map, details panel | A TS/JS repo indexes from one command and renders a readable lane-ordered map with working details | ✅ Done |
 | **2. Live graph** | File watcher, incremental resolution with reverse-dependency invalidation, graph diffs, WebSocket events, animated updates, stable layout, change tape | Saving a file updates only the affected region, animates the diff, and leaves unchanged components in place | ✅ Done |
 | **3. Navigation** | Search, open in editor, jump to line, category filters, data-flow, sequence and System lenses · **remaining:** nested group boundaries, expanding a box in place | A large repo stays readable: the user can reduce the map to the part they care about | 🟡 Partial |
 | **4. Graph intelligence** | Trace (downstream) and impact (upstream) on the architecture graph · **remaining:** shortest path between two components, code-level impact | "What breaks if I change this" is answerable at both architecture and symbol level | 🟡 Partial |
 | **5. AI understanding** | Optional graph-backed explanations over deterministic findings, designed as the [Architecture Knowledge Loop](feature-knowledge/README.md); a review prototype (`pnpm arch`) exists | AI answers cite graph nodes and never introduce an edge; works with AI entirely disabled | ⬜ Planned |
 | **6. Git intelligence** | Working-tree overlays, branch and commit architecture diffs, timeline; `snapshots` schema filled in | "What changed architecturally on this branch" renders as a diff of the map | ⬜ Planned |
 | **7. Coding-agent integration** | Attribute changes to agent sessions (e.g. Claude Code hooks); expose the graph to agents over MCP | A change can be traced to the agent session that made it; an agent can query the graph | ⬜ Planned |
-| **D. Desktop app** | Tauri shell around the same UI, engine as a sidecar | Installable app, no pnpm or Node setup required of the user | ⬜ Planned |
+| **D. Desktop app** | Electron shell (Electron Forge) around the same UI, engine in a utility process · **done:** [`apps/desktop`](../../apps/desktop/README.md) packages and runs on macOS, unsigned · **remaining:** signing, installers tested on every platform, tray and background watching | Installable app, no pnpm or Node setup required of the user | 🟡 Partial |
 
 Phases 3 and 4 can proceed in parallel — they touch different layers (UI reduction vs. graph queries). Phase 5 must not start before 4, because AI is only allowed to annotate a graph that already answers structural questions on its own.
 
@@ -36,7 +36,7 @@ Phases 3 and 4 can proceed in parallel — they touch different layers (UI reduc
 | Git diffs (6) | Stable node ids (1) and a defined `snapshots.metadata` shape (5 doc) | Comparing two commits means comparing two sets of stable ids |
 | Agent attribution (7) | Change tape + batch `seq` (2) | Attribution hangs off the existing change record |
 | MCP surface (7) | Graph query API (1, 4) | MCP exposes queries that must already exist internally |
-| Desktop shell (D) | A stable CLI contract (1) | The sidecar is the CLI |
+| Desktop shell (D) | A stable CLI contract (1) | The desktop app runs the CLI's own `launch()` |
 | Any public release | Classification-configurability decision (PRD open question) | Non-Next.js repos currently need rule tuning we cannot ask users to do |
 
 ## 3. Blocking decisions
@@ -46,7 +46,7 @@ These are the PRD/TRD open questions, restated as things that gate work:
 1. **Are classification rules user-extensible?** Blocks a wider release. Without it, repos outside Next.js/Node.js conventions produce a weak map and the user has no recourse beyond doc comments.
 2. **Does Phase 5 permit any non-local model?** Blocks Phase 5 design. "No network calls" is currently a product claim in the README; an opt-in remote model would require rewording it precisely rather than quietly.
 3. **Express router prefixes** (`app.use('/api', router)` not joined to the router's routes) — correctness fix in Phase 3, or documented limitation? Currently documented.
-4. **Is the Tauri shell a release prerequisite,** or does the CLI remain the distribution channel?
+4. **Is the desktop app a release prerequisite,** or does the CLI remain the distribution channel?
 
 ## 4. Validation
 
@@ -67,7 +67,7 @@ Validation is continuous, not a phase. Three layers, each answering a different 
 | 5 | AI disabled is a fully functional product; every AI answer cites graph nodes; no AI-derived edge ever enters the graph |
 | 6 | A commit-to-commit architecture diff reproduces exactly when re-run (determinism) |
 | 7 | Agent attribution does not alter the graph itself; MCP exposes read-only queries |
-| D | Desktop build runs the engine as a sidecar with the same token and `Host` protections |
+| D | Desktop build runs the engine in a utility process with the same token and `Host` protections |
 
 **Manual checks that no test covers:** reduced-motion behaviour, both colour schemes, focus visibility, and the keyboard paths listed in the [Design Brief](../04-design-brief/README.md) §9. These should be walked before any release that touches the UI.
 

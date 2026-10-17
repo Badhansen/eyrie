@@ -15,8 +15,8 @@ Eyrie is a pnpm monorepo. One long-running local process (the engine + server) o
 
 ```text
 files ──► parser (tree-sitter WASM) ──► facts per file ──► code graph ──► architecture graph ──► UI
-             cached by content hash         (Graphology + SQLite)   (deterministic rules)   (ELK layout; D3 2D;
-                                                                                             CSS 3D city; anime.js)
+             cached by content hash         (Graphology + SQLite)   (deterministic rules)   (ELK layout; React Flow 2D;
+                                                                                             Three.js city; anime.js)
                                               ▲
 file watcher ── changed files only ───────────┘   diffs ──► WebSocket events ──► animations
 ```
@@ -43,8 +43,8 @@ Dependencies point one way: `core ← parser/graph/storage ← architecture ← 
 
 - **Framework:** React 19, built with Vite 8 (Tailwind v4 via `@tailwindcss/vite`), served as static assets by the engine's own HTTP server.
 - **Layout:** `elkjs` computes the lane-ordered architecture layout. Layout is *stable*: existing components keep their order when the graph updates.
-- **2D renderer:** hand-written D3 (`d3-selection`, `d3-zoom`, `d3-transition`, `d3-ease`, `d3-interpolate`) over SVG — no general-purpose graph library, so node rendering and interaction stay under our control.
-- **3D view:** CSS 3D transforms (no WebGL dependency). Lanes become districts on a perspective floor; block height encodes lines of code.
+- **2D renderer:** React Flow (`@xyflow/react`) with custom node and edge components, so node rendering and interaction stay under our control.
+- **3D view:** a full-canvas Three.js (WebGL) city; block height encodes lines of code. Without WebGL the view offers a switch back to 2D.
 - **Animation:** `animejs` for diff-driven motion (halos, pulses, block rise/sink, trace flow).
 - **State:** a small hand-rolled store (`apps/web/src/state/store.ts`). Lens and 2D/3D preference persist in `localStorage` (`eyrie-lens`, `eyrie-view`).
 - **Icons:** `lucide-react`.
@@ -163,7 +163,7 @@ There are no user accounts. The trust boundary is "a process on this machine, st
 
 - **Distribution today:** clone the repo, `pnpm install`, `pnpm start`. `pnpm start` builds the UI first, so a user always serves a current bundle.
 - **Versioning:** `SCHEMA_VERSION` and `facts_version` are the two compatibility knobs; bumping either triggers an automatic local rebuild (see Backend Schema).
-- **Planned:** Tauri desktop shell wrapping the same UI with the engine as a sidecar.
+- **Desktop (in progress):** an Electron app (Electron Forge, `apps/desktop`) wraps the same UI and runs the engine in a utility process, through the same `launch()` as the CLI. It packages and runs on macOS; it is not signed or distributed.
 - **Licence:** GNU AGPL-3.0-only. Modifying Eyrie and offering it to others *over a network* obliges you to offer your source. Running it locally carries no obligation. This constrains any future hosted offering — a deliberate choice.
 
 ## 12. Constraints and rationale

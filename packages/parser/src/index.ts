@@ -12,7 +12,7 @@ import { RubyExtractor } from './ruby.js';
 import { RustExtractor } from './rust.js';
 import { TypeScriptExtractor } from './typescript.js';
 
-export { SOURCE_EXTENSIONS, detectLanguage } from './languages.js';
+export { SOURCE_EXTENSIONS, detectLanguage, grammarFiles } from './languages.js';
 export { goPackageName } from './go.js';
 
 /** Bump whenever extraction output changes so cached facts are re-parsed. */

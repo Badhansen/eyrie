@@ -14,10 +14,8 @@
     "dev": "tsx watch --clear-screen=false src/cli.ts ../../fixtures/bookstore-app --port 4319 --token dev --no-open"
   },
   "dependencies": {
-    "@eyrie/architecture": "workspace:*",
     "@eyrie/core": "workspace:*",
     "@eyrie/engine": "workspace:*",
-    "@eyrie/graph": "workspace:*",
     "ws": "8.22.0"
   },
   "devDependencies": {
