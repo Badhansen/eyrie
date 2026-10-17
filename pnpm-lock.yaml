@@ -90,10 +90,6 @@ importers:
       '@eyrie/graph':
         specifier: workspace:*
         version: link:../graph
-    devDependencies:
-      '@eyrie/parser':
-        specifier: workspace:*
-        version: link:../parser
 
   packages/core: {}
 
@@ -152,9 +148,6 @@ importers:
       '@eyrie/graph':
         specifier: workspace:*
         version: link:../graph
-      '@eyrie/parser':
-        specifier: workspace:*
-        version: link:../parser
 
   packages/parser:
     dependencies:
@@ -194,18 +187,12 @@ importers:
 
   packages/server:
     dependencies:
-      '@eyrie/architecture':
-        specifier: workspace:*
-        version: link:../architecture
       '@eyrie/core':
         specifier: workspace:*
         version: link:../core
       '@eyrie/engine':
         specifier: workspace:*
         version: link:../engine
-      '@eyrie/graph':
-        specifier: workspace:*
-        version: link:../graph
       ws:
         specifier: 8.22.0
         version: 8.22.0

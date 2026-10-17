@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ArchGraph } from '@eyrie/core';
-import { FixtureRepo, memoryIndex } from '../../graph/test/fixture.js';
+import { FixtureRepo, memoryIndex } from '@eyrie/graph/testing';
 import { deriveArchitecture } from '../src/index.js';
 
 function readable(graph: ArchGraph) {

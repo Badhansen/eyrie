@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { ArchEdge, ArchGraph, ArchKind, ArchLane, ArchNode, CodeEdgeKind } from '@eyrie/core';
 import { deriveArchitecture } from '@eyrie/architecture';
-import { FixtureRepo } from '../../graph/test/fixture.js';
+import { FixtureRepo } from '@eyrie/graph/testing';
 import { SYSTEM_ID_PREFIX, dataFlowLens, dataRole, entryPoints, sequenceTrace, systemLens, type SystemPart } from '../src/index.js';
 
 const LANE: Partial<Record<ArchKind, ArchLane>> = {
