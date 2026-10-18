@@ -5,4 +5,4 @@ export { AI_BACKENDS, createAiBackend, type AiBackendName } from './backends.js'
 export { claudeArgs, claudeCodeBackend, parseClaudeOutput, type ClaudeCodeOptions } from './claude.js';
 export { CODEX_DISABLED_FEATURES, codexArgs, codexBackend, parseCodexRun, seatbeltProfile, strictSchema, type CodexOptions } from './codex.js';
 export { agentsOf, headCommit, readCommits, recentHashes, type CommitFile, type GitCommit } from './git.js';
-export { commitView, type CommitView, type CommitViewNote } from './views.js';
+export { VIEW_LIMITS, commitView, type CommitView, type CommitViewNote } from './views.js';

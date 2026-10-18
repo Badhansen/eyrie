@@ -143,6 +143,27 @@ describe('MCP server', () => {
     const [owned, loose] = (await call('components_for_files', { files: [route.files[0], 'nowhere/new-file.ts'] })).body as Record<string, any>[];
     expect(owned!.components.map((c: { id: string }) => c.id)).toContain(route.id);
     expect(loose).toMatchObject({ file: 'nowhere/new-file.ts', components: [], note: expect.any(String) });
+    // Agents often pass one path as a string.
+    const single = (await call('components_for_files', { files: route.files[0] })).body as Record<string, any>[];
+    expect(single[0]!.components.map((c: { id: string }) => c.id)).toContain(route.id);
+    expect(await call('components_for_files', { files: [] })).toMatchObject({ isError: true, body: { error: 'Give the files as a list of paths.' } });
+  });
+
+  it('keeps counts in range, and cuts long lanes to their most connected components', async () => {
+    expect((await call('commit_history', { limit: -5 })).body.commits).toHaveLength(1);
+    expect((await call('commit_history', { limit: 'lots' })).body.commits).toHaveLength(2);
+    expect((await call('find_components', { query: 'src', limit: 1 })).body.components).toHaveLength(1);
+
+    const small = new EyrieMcp({ engine, ready: Promise.resolve({}), version: '1', laneLimit: 2 });
+    const { result } = (await small.handle({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'architecture_overview' } })) as { result: { content: { text: string }[] } };
+    const body = JSON.parse(result.content[0]!.text);
+    const ui = engine.architecture.nodes.filter((n) => n.lane === 'ui');
+    expect(body.lanes.ui).toHaveLength(2);
+    expect(body.omitted.ui).toBe(ui.length - 2);
+    expect(body.note).toMatch(/2 most connected/);
+    const links = (id: string) => engine.architecture.edges.filter((e) => e.source === id || e.target === id).length;
+    expect(links(body.lanes.ui[0].id)).toBe(Math.max(...ui.map((n) => links(n.id))));
+    small.dispose();
   });
 
   it('names what changed in the architecture since it started, including removed components', async () => {

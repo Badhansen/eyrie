@@ -8,6 +8,9 @@ import {
   ProjectKnowledge,
   agentsOf,
   CODEX_DISABLED_FEATURES,
+  KnowledgeStore,
+  VIEW_LIMITS,
+  commitView,
   analysisRequest,
   claudeArgs,
   codexArgs,
@@ -225,6 +228,28 @@ describe('ProjectKnowledge', () => {
     const [latest] = k.store.analyses(k.store.commits()[0]!.hash);
     expect(latest).toMatchObject({ status: 'failed', error: 'quota exceeded' });
     await k.close();
+  });
+});
+
+describe('commitView', () => {
+  it('cuts long lists and says how much was left out', async () => {
+    const store = KnowledgeStore.open(':memory:');
+    const files = Array.from({ length: 70 }, (_, i) => ({ path: `src/f${i}.ts`, added: 1, deleted: 0 }));
+    const components = Array.from({ length: 50 }, (_, i) => ({ id: `c${i}`, label: `C${i}`, kind: 'service', lane: 'logic', category: 'service' }));
+    store.addCommits([{ hash: 'abc1234', parents: [], authorName: 'Ada', authorEmail: 'a@b.c', authoredAt: 1, committedAt: 1, subject: 'big merge', body: 'details', agents: [], files, components, recordedAt: 1 }]);
+    const commit = store.commit('abc1234')!;
+    const list = commitView(store, commit);
+    expect(list.components).toHaveLength(VIEW_LIMITS.listComponents);
+    expect(list.moreComponents).toBe(50 - VIEW_LIMITS.listComponents);
+    expect(list.files).toBeUndefined();
+    expect(list.filesChanged).toBe(70);
+    const full = commitView(store, commit, { detail: true });
+    expect(full.files).toHaveLength(VIEW_LIMITS.detailFiles);
+    expect(full.moreFiles).toBe(70 - VIEW_LIMITS.detailFiles);
+    expect(full.components).toHaveLength(VIEW_LIMITS.detailComponents);
+    expect(full.moreComponents).toBe(50 - VIEW_LIMITS.detailComponents);
+    expect(full.body).toBe('details');
+    store.close();
   });
 });
 

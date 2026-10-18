@@ -86,7 +86,7 @@ A name that matches several components is refused with the candidates rather tha
 
 ## Commit history and AI notes
 
-Whenever Eyrie opens or scans a project, it records the commits it has not seen yet in the project's `knowledge.db`: the message, the author and any coding agent in a `Co-Authored-By` trailer, the files changed with line counts, and the architecture components those files belong to. While a project is open it checks for new commits every 15 seconds.
+Whenever Eyrie opens or scans a project, it records the commits it has not seen yet in the project's `knowledge.db`: the message, the author and any coding agent in a `Co-Authored-By` trailer, the files changed with line counts, and the architecture components those files belong to. While a project is open it checks for new commits every 5 seconds.
 
 Optionally, Eyrie has each commit **noted** by your Claude Code or Codex CLI: what the commit is for, whether what it changed matches its message, and its architectural risk. A commit titled "fix: typo in checkout" that also edits the data model is flagged. Turn it on per project in the desktop app (**Analyse Commits with Claude** or **with Codex** in the project's ⋯ menu), or with `--ai claude` / `--ai codex` (or `EYRIE_AI`) on the command line. It is off by default. Codex is available on macOS only for now, because Eyrie runs it inside a macOS sandbox (see [Privacy and security](#privacy-and-security)).
 

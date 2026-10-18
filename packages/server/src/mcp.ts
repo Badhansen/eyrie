@@ -77,6 +77,11 @@ interface ComponentBrief {
 
 const brief = (n: ArchNode): ComponentBrief => ({ id: n.id, label: n.label, kind: n.kind, lane: n.lane });
 const MAX_CHANGES = 200;
+/** Components listed per lane in the overview. Agents pay for every token; find_components reaches the rest. */
+const LANE_LIMIT = 60;
+
+/** A count argument as a whole number between 1 and `max`, or `fallback` when it is missing or not a number. */
+const countArg = (value: unknown, fallback: number, max: number) => Math.max(1, Math.min(max, Math.floor(Number(value)) || fallback));
 
 export interface McpOptions {
   /** The project's engine. It may still be indexing: tool calls wait for `ready`. */
@@ -84,6 +89,8 @@ export interface McpOptions {
   /** Resolves once the engine has indexed, with the project's knowledge when it has one. */
   ready: Promise<{ knowledge?: ProjectKnowledge }>;
   version: string;
+  /** Components listed per lane in architecture_overview (default 60). */
+  laneLimit?: number;
 }
 
 /** Handles MCP messages for one project. Transport-free, so it is tested without stdio. */
@@ -266,7 +273,7 @@ export class EyrieMcp {
         inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number', description: 'Most results (default 20)' } }, required: ['query'] },
         run: (args) => {
           const query = String(args.query ?? '');
-          const limit = Math.min(100, Number(args.limit) || 20);
+          const limit = countArg(args.limit, 20, 100);
           const found = [...this.nodes.values()].filter((n) => matches(n, query));
           return { found: found.length, components: found.slice(0, limit).map((n) => ({ ...brief(n), sublabel: n.sublabel, files: n.files.slice(0, 3) })) };
         },
@@ -304,7 +311,12 @@ export class EyrieMcp {
         title: 'Components for files',
         description: 'Which architecture components own the given files, and how many components use each. Call with the files you are about to edit.',
         inputSchema: { type: 'object', properties: { files: { type: 'array', items: { type: 'string' }, description: 'Paths relative to the repository, or absolute' } }, required: ['files'] },
-        run: (args) => this.forFiles(Array.isArray(args.files) ? args.files.map(String) : []),
+        run: (args) => {
+          // A single path is common enough from agents to accept as it is.
+          const files = Array.isArray(args.files) ? args.files.map(String) : typeof args.files === 'string' ? [args.files] : [];
+          if (!files.length) throw new Error('Give the files as a list of paths.');
+          return this.forFiles(files);
+        },
       },
       {
         name: 'recent_changes',
@@ -348,8 +360,17 @@ export class EyrieMcp {
       t.in++;
       degree.set(e.target, t);
     }
+    const links = (id: string) => (degree.get(id)?.in ?? 0) + (degree.get(id)?.out ?? 0);
+    // Most connected first, so a long lane cut at the limit keeps the components that matter most.
+    const byLane = new Map<string, ArchNode[]>();
+    for (const n of [...nodes].sort((a, b) => links(b.id) - links(a.id))) byLane.set(n.lane, [...(byLane.get(n.lane) ?? []), n]);
+    const limit = this.opts.laneLimit ?? LANE_LIMIT;
     const lanes: Record<string, unknown[]> = {};
-    for (const n of nodes) (lanes[n.lane] ??= []).push({ id: n.id, label: n.label, kind: n.kind, ...(n.sublabel ? { sublabel: n.sublabel } : {}) });
+    const omitted: Record<string, number> = {};
+    for (const [lane, list] of byLane) {
+      lanes[lane] = list.slice(0, limit).map((n) => ({ id: n.id, label: n.label, kind: n.kind, ...(n.sublabel ? { sublabel: n.sublabel } : {}) }));
+      if (list.length > limit) omitted[lane] = list.length - limit;
+    }
     const mostConnected = nodes
       .map((n) => ({ ...brief(n), usedBy: degree.get(n.id)?.in ?? 0, dependsOn: degree.get(n.id)?.out ?? 0 }))
       .sort((a, b) => b.usedBy + b.dependsOn - (a.usedBy + a.dependsOn))
@@ -358,6 +379,7 @@ export class EyrieMcp {
       repo: { name: engine.repo.name, root: engine.root, frameworks: engine.repo.frameworks },
       size: { files: engine.stats.files, symbols: engine.stats.symbols, components: nodes.length, links: this.edges.length },
       lanes,
+      ...(Object.keys(omitted).length ? { omitted, note: `Each lane lists its ${limit} most connected components; find_components searches all of them.` } : {}),
       mostConnected,
       history: this.knowledge?.summary() ?? null,
     };
@@ -429,7 +451,7 @@ export class EyrieMcp {
       return commitView(k.store, c, { detail: true });
     }
     const componentId = args.component === undefined ? undefined : this.resolve(args.component).id;
-    const list = k.store.commits({ limit: Math.min(100, Number(args.limit) || 10), component: componentId, agent: typeof args.agent === 'string' ? args.agent : undefined });
+    const list = k.store.commits({ limit: countArg(args.limit, 10, 100), component: componentId, agent: typeof args.agent === 'string' ? args.agent : undefined });
     return { summary: k.summary(), commits: list.map((c) => commitView(k.store, c)) };
   }
 }

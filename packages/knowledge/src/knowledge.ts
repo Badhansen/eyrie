@@ -113,8 +113,12 @@ export class ProjectKnowledge {
     return this.enqueue(() => analyzePending(this.store, { backend: ai, project: this.opts.project(), signal: this.abort.signal, log: this.log }));
   }
 
-  /** Records and analyses new commits whenever HEAD moves, checking every `intervalMs`. */
-  watch(intervalMs = 15_000): void {
+  /**
+   * Records and analyses new commits whenever HEAD moves, checking every
+   * `intervalMs`: one `git rev-parse`, cheap enough that an agent asking about
+   * the commit it just made finds it.
+   */
+  watch(intervalMs = 5_000): void {
     if (this.timer) return;
     this.timer = setInterval(() => {
       void headCommit(this.opts.root).then((head) => {
