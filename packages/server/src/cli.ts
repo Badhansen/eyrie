@@ -1,23 +1,37 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { launch } from './launch.js';
+import { GraphEngine } from '@eyrie/engine';
+import { createAiBackend, type ProjectKnowledge } from '@eyrie/knowledge';
+import { launch, openKnowledge } from './launch.js';
+import { EyrieMcp, serveStdio } from './mcp.js';
 
 const HELP = `eyrie — live architecture graph for a codebase
 
 Usage
-  eyrie [path] [options]
+  eyrie [path] [options]       index a repository and open its live map
+  eyrie mcp [path] [options]   serve the repository to coding agents over MCP (stdio)
 
 Options
-  --port <n>     Port for the local UI (default: 4319 or the next free one; 0 = any)
-  --host <h>     Interface to bind (default 127.0.0.1)
-  --token <t>    Access token (default: random per run)
-  --no-open      Do not open the browser
-  --no-watch     Index once without watching for changes
-  --reset        Ignore the cache and re-parse every file
-  -h, --help     Show this help
+  --port <n>       Port for the local UI (default: 4319 or the next free one; 0 = any)
+  --host <h>       Interface to bind (default 127.0.0.1)
+  --token <t>      Access token (default: random per run)
+  --no-open        Do not open the browser
+  --no-watch       Index once without watching for changes
+  --reset          Ignore the cache and re-parse every file
+  --ai <backend>   Note recorded commits with an AI backend: claude (your Claude Code CLI)
+                   or codex (your Codex CLI, macOS only). Off by default; also EYRIE_AI.
+                   Sends commit messages, file paths and component names, never source code.
+  --ai-model <m>   Model for --ai (default: the backend's own)
+  -h, --help       Show this help
+
+Add Eyrie to Claude Code (other MCP clients take the same command):
+  claude mcp add eyrie -- eyrie mcp /path/to/repo
 `;
+
+const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
 async function main(): Promise<void> {
   // `pnpm start -- <path>` forwards a literal `--`; drop it so options still parse.
@@ -32,6 +46,8 @@ async function main(): Promise<void> {
       'no-open': { type: 'boolean', default: false },
       'no-watch': { type: 'boolean', default: false },
       reset: { type: 'boolean', default: false },
+      ai: { type: 'string' },
+      'ai-model': { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
@@ -39,12 +55,14 @@ async function main(): Promise<void> {
     process.stdout.write(HELP);
     return;
   }
+  const ai = createAiBackend(values.ai ?? process.env.EYRIE_AI, { model: values['ai-model'] });
+  if (positionals[0] === 'mcp') return mcp(resolve(positionals[1] ?? process.cwd()), { watch: !values['no-watch'], reset: values.reset, ai });
 
   const root = resolve(positionals[0] ?? process.cwd());
   const log = (m: string) => process.stdout.write(`[eyrie] ${m}\n`);
   log(`Indexing ${root}`);
   const port = values.port === undefined ? undefined : Number(values.port);
-  const eyrie = await launch({ root, host: values.host, port, token: values.token, watch: !values['no-watch'], reset: values.reset, log }).catch((err: unknown) => {
+  const eyrie = await launch({ root, host: values.host, port, token: values.token, watch: !values['no-watch'], reset: values.reset, ai, log }).catch((err: unknown) => {
     if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') throw new Error(`Port ${values.port} is already in use. Choose another with --port, or use --port 0 for any free port.`);
     throw err;
   });
@@ -57,6 +75,29 @@ async function main(): Promise<void> {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+}
+
+/**
+ * MCP over stdio. The handshake is answered at once and tool calls wait for the
+ * index, so a large repository does not time out the client. stdout carries
+ * the protocol only; everything else goes to stderr.
+ */
+async function mcp(root: string, opts: { watch: boolean; reset: boolean; ai: ReturnType<typeof createAiBackend> }): Promise<void> {
+  const log = (m: string) => process.stderr.write(`[eyrie] ${m}\n`);
+  const engine = new GraphEngine({ root, watch: opts.watch, reset: opts.reset, log });
+  engine.on('error', (err) => log(`error: ${err.message}`));
+  let knowledge: ProjectKnowledge | undefined;
+  const ready = engine.start().then(async () => {
+    knowledge = await openKnowledge(engine, { ai: opts.ai, watch: opts.watch, log });
+    return { knowledge };
+  });
+  ready.catch((err: unknown) => log(`Could not index ${root}: ${(err as Error).message}`));
+  const server = new EyrieMcp({ engine, ready, version: VERSION });
+  await serveStdio(server);
+  server.dispose();
+  await knowledge?.close();
+  await engine.stop();
+  process.exit(0);
 }
 
 function openBrowser(url: string): void {

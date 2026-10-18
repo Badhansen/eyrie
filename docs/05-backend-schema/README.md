@@ -4,33 +4,37 @@
 | --- | --- |
 | Product | Eyrie |
 | Owner | Badhan Sen |
-| Status | Matches `packages/storage/src/index.ts` at `SCHEMA_VERSION = '1'` |
-| Last updated | 2026-10-08 |
+| Status | Matches `packages/storage/src/index.ts` at `SCHEMA_VERSION = '1'` and `packages/knowledge/src/store.ts` at `user_version` 1 |
+| Last updated | 2026-10-18 |
 | Answers | How is data stored, related and accessed? |
 | Related | [TRD](../02-technical-requirements/README.md) · [Implementation Plan](../06-implementation-plan/README.md) |
 
 ## 1. What data exists — and what deliberately does not
 
-Eyrie stores **no personal data, no accounts, no content of its own**. The only persistent store is a local, disposable cache of analysis derived from the user's own repository.
+Eyrie stores **no accounts and no content of its own**. Per repository it keeps two local SQLite files:
+
+- `graph.db` — a **disposable** cache of analysis derived from the source. Everything in it can be deleted and rebuilt from the code.
+- `knowledge.db` — **durable** project knowledge: the commits Eyrie has recorded (copied from the repository's git history, including author and co-author names and email addresses) and, when the user turned it on, AI notes on them. Commits can be read again from git while the history exists; notes cannot be rebuilt without paying for them again.
 
 | Not stored | Why |
 | --- | --- |
 | Users, sessions, credentials | There is no account system; the trust boundary is the OS user (see TRD §8) |
-| Anything on a server we operate | Nothing leaves the machine |
-| Telemetry or usage data | No network calls at all |
+| Anything on a server we operate | There is no server; Eyrie stores nothing remotely |
+| Telemetry or usage data | No analytics and no usage reporting. The only data that leaves the machine is what the user sends to Anthropic by turning on AI notes (TRD §7) |
+| Source code in `knowledge.db` | Commits are stored as messages, paths, line counts and component references, never file contents |
 
-**Durable truth lives in the repository, which Eyrie never writes to.** Everything in the database can be deleted and rebuilt from source. That is the governing property of this schema.
+**Durable truth about the code lives in the repository, which Eyrie never writes to.** That is the governing property of `graph.db`. `knowledge.db` is the one store that is a record rather than a cache, and its rules differ accordingly (§3, §7, §9).
 
 ## 2. Storage engine and location
 
 | Property | Value |
 | --- | --- |
 | Engine | SQLite via Node's built-in `node:sqlite` (`DatabaseSync`) — no native module |
-| File | `~/.eyrie/repos/<hash>/graph.db`, where `<hash>` identifies the repository root |
+| Files | `~/.eyrie/repos/<hash>/graph.db` and `~/.eyrie/repos/<hash>/knowledge.db`, where `<hash>` identifies the repository root (the project folder, which may be a sub-folder of a git work tree) |
 | Override | `EYRIE_HOME` relocates the whole store |
 | Pragmas | `journal_mode = WAL`, `synchronous = NORMAL` |
 | Tests | Opened as `:memory:` |
-| Access | One engine process per database; single writer, no concurrency protocol needed |
+| Access | `graph.db`: one engine process, single writer. `knowledge.db`: may be opened by more than one process at once (the desktop app's open project and a scan, or an MCP server), so it also sets `busy_timeout = 5000`; inserts are idempotent (`INSERT OR IGNORE` on the commit hash) |
 
 Row shapes are "columns for querying, JSON for fidelity": indexed scalars are promoted to real columns, and the full typed object is kept in a `data` / `facts` TEXT column so nothing is lost to a lossy projection.
 
@@ -115,6 +119,48 @@ Upserted on every run (`ON CONFLICT(id)` refreshes `name`, `root_path`, `updated
 
 Written by `recordSnapshot()`. This is the forward hook for **Phase 6 (Git intelligence)**: architecture diffs between commits and the timeline view will read from here. It is intentionally thin until that phase defines what a snapshot must contain.
 
+### `knowledge.db`
+
+Owned by `@eyrie/knowledge` (`KnowledgeStore`). Foreign keys on.
+
+#### `commits` — the git history Eyrie has seen
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `hash` | TEXT | **PK** — full commit hash |
+| `parents` | TEXT | NOT NULL — space-separated hashes |
+| `author_name`, `author_email` | TEXT | NOT NULL — as recorded in git |
+| `authored_at`, `committed_at` | INTEGER | NOT NULL — epoch ms. Index on `committed_at DESC` |
+| `subject` | TEXT | NOT NULL — first line of the message |
+| `body` | TEXT | NOT NULL — the rest, trimmed (includes trailers) |
+| `agents` | TEXT | NOT NULL — JSON array of coding agents named as author or in `Co-Authored-By` (`Claude`, `Codex`, `Copilot`, `Cursor`, `Gemini`, `Devin`, `Aider`) |
+| `files` | TEXT | NOT NULL — JSON `[{ path, added, deleted }]`, relative to the project folder; `null` counts for binary files; merges list their changes against the first parent |
+| `components` | TEXT | NOT NULL — JSON `[{ id, label, kind, lane, category }]`: architecture components owning the changed files, **as the graph stood when the commit was recorded** (ids are stable; labels are a snapshot) |
+| `recorded_at` | INTEGER | NOT NULL — epoch ms |
+
+Written by `ProjectKnowledge.record()`: the newest 200 commits on HEAD that touched the project folder the first time, then only hashes not yet present. Rewritten history adds the new commits and keeps the old ones.
+
+#### `analyses` — AI notes, append-only
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | INTEGER | **PK AUTOINCREMENT** |
+| `commit_hash` | TEXT | NOT NULL — **FK → `commits.hash`**. Index on `(commit_hash, created_at DESC)` |
+| `backend` | TEXT | NOT NULL — `claude-code` or `codex` |
+| `model` | TEXT | Nullable — the model the backend reported (`claude-sonnet-5`), or the one requested with `--ai-model`; null when Codex used its default |
+| `input_hash` | TEXT | NOT NULL — hash of exactly what was sent, so a note is tied to its input |
+| `created_at` | INTEGER | NOT NULL — epoch ms |
+| `status` | TEXT | NOT NULL — `ok`, `rejected` (failed validation: it cited a file or component the commit lacks, or was malformed) or `failed` (the request failed; retried up to three times) |
+| `note` | TEXT | Nullable — JSON `{ intent, matchesMessage: yes\|partly\|no\|unclear, mismatch?, risk: low\|medium\|high, observations: [{ text, evidence: ["file:…" \| "component:…"] }] }` |
+| `error` | TEXT | Nullable — why it failed or was rejected |
+| `usage` | TEXT | Nullable — JSON token counts and cost, on the first note of each request |
+
+A note is never a finding, an edge or a rule. Readers show the newest `ok` note, labelled with `backend · model`.
+
+#### `meta`
+
+`key`/`value` TEXT, as in `graph.db`. `last_head` is the HEAD seen by the latest recording.
+
 ## 4. Vocabulary (enumerations)
 
 These are string enums in `@eyrie/core`, enforced in TypeScript rather than by SQL constraints.
@@ -171,6 +217,8 @@ There is no migration ladder, by design — **nothing here is durable truth, so 
 
 **Rule for contributors:** changing any column, table or id-derivation requires bumping `SCHEMA_VERSION`; changing what the parser emits into `FileFacts` requires bumping `facts_version`. Forgetting either leaves users with a silently stale cache — the one genuinely user-visible failure mode this schema has.
 
+**`knowledge.db` is the exception:** it is a record, so it is never dropped. Its migrations are an ordered list in `packages/knowledge/src/store.ts`, applied in order inside a transaction each and tracked in `PRAGMA user_version`. A migration may only add tables, columns or indexes; changing the meaning of an existing column means adding a new one.
+
 ## 8. Access control
 
 There is no row-level security, because there is no multi-user surface. Access is controlled at two layers instead:
@@ -181,7 +229,7 @@ There is no row-level security, because there is no multi-user surface. Access i
 | Process | One engine owns the file; it is the only writer |
 | Network | The API binds `127.0.0.1`, requires the random per-run token, and rejects non-local `Host` headers |
 | Read surface | API exposes only derived graph data plus `GET /api/source` for files **already in the index** |
-| Write surface | `POST /api/open` is the only mutating endpoint, and it only launches an editor on an indexed path |
+| Write surface | `POST /api/open` is the only mutating endpoint, and it only launches an editor on an indexed path. `GET /api/commits` and the MCP server read `knowledge.db`; only the engine side writes it |
 
 **What is *not* in the index is not reachable.** Scanning honours `.gitignore` and `.eyrieignore`, so `.env` files, keys and build output are never parsed, never stored and never servable. This is enforced in the engine, not in the UI — hiding a control would not be access control.
 
@@ -189,18 +237,20 @@ There is no row-level security, because there is no multi-user surface. Access i
 
 | Concern | Policy |
 | --- | --- |
-| Retention | Indefinite but disposable; the cache is an optimisation, never a record |
-| Deletion | Delete `~/.eyrie/repos/<hash>/` (or the whole `~/.eyrie/`). No orphaned state remains elsewhere |
+| Retention | `graph.db`: indefinite but disposable; the cache is an optimisation, never a record. `knowledge.db`: indefinite; there is no pruning yet |
+| Deletion | Delete `~/.eyrie/repos/<hash>/` (or the whole `~/.eyrie/`), which removes both files; or delete `knowledge.db` alone to forget recorded commits and notes. No orphaned state remains elsewhere, except notes' inputs already sent to Anthropic or OpenAI, which follow the user's own account terms with them |
 | Reset without deleting | `--reset` ignores the cache and re-parses every file |
 | Removed files | Dropped from `files` on the next scan; their nodes and edges are removed by the diff |
-| Backups | **None needed and none taken.** Everything is derivable from the repository. The repository's own backups are the only ones that matter |
+| Backups | **None taken.** `graph.db` is derivable from the repository. `knowledge.db` is not entirely: losing it loses AI notes (commits are read again from git) |
 | Recovery | Delete the database and re-run. Expect a slower first index (parsing is single-threaded), then cached speed |
 | Portability | The database contains absolute paths (`repositories.root_path`), so it is machine-local and not meant to be copied between machines |
 | Growth | Roughly proportional to parsed file count; `facts` JSON dominates the file size |
 
 ## 10. If this ever gains real user data
 
-It does not today, and this section exists so that the decision is deliberate rather than accidental. Any future feature that stores user-identifying data, a shared/remote graph, or AI prompt history would need: an explicit entity and field list here, retention and deletion rules, a privacy notice, and a fresh pass through [07 — Launch Readiness](../07-launch-readiness/README.md) items 5–8 (data mapping, privacy notice, retention, privacy requests), all four of which currently rest on there being no personal data at all. Until then, "no personal data" is the claim — and it must stay accurate in the README and in any marketing copy.
+**It now does, in a limited way, and this section records the decision.** `knowledge.db` holds the names and email addresses of commit authors and co-authors, copied from the repository's git history that the user already has on their machine, and optionally AI notes produced from commit messages and paths sent to Anthropic or OpenAI through the user's own Claude Code or Codex CLI. The entity and field list is in §3 and the lifecycle in §9. Nothing is sent to a server Eyrie operates.
+
+Still open, as this section always required: a fresh pass through [07 — Launch Readiness](../07-launch-readiness/README.md) items 5–8 (data mapping, privacy notice, retention, privacy requests), which were written for "no personal data at all", and a retention rule for `knowledge.db`. Until that pass, the README states exactly what is stored and sent rather than "no personal data".
 
 ## Completion checklist
 

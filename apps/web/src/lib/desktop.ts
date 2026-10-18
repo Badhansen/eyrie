@@ -16,6 +16,9 @@ export interface ProjectScan {
   components: number;
   links: number;
   frameworks: string[];
+  /** Commits recorded in the project's knowledge.db, and how many have an AI note. */
+  commits?: number;
+  analysed?: number;
 }
 
 export interface ProjectView {
@@ -29,6 +32,8 @@ export interface ProjectView {
   scan?: ProjectScan;
   /** Why the last scan or open failed. */
   error?: string;
+  /** The AI backend that notes this project's commits, when turned on. */
+  ai?: string;
   status: ProjectStatus;
   /** When the current scan or open started, while one is running. */
   since?: number;

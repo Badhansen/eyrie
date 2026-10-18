@@ -34,7 +34,7 @@ import started from 'electron-squirrel-startup';
 import { Channel, type AddResult, type ProjectView } from './bridge.js';
 import { ProjectStore, isDirectory } from './projects.js';
 import type { FromHost, ToHost } from './protocol.js';
-import { findEditor, projectFromArgs, statusPage, tildify } from './util.js';
+import { findEditor, onPath, projectFromArgs, statusPage, tildify } from './util.js';
 
 // Squirrel.Windows runs the app while installing and uninstalling, to create and remove shortcuts.
 if (started) app.quit();
@@ -289,7 +289,7 @@ async function openProject(id: string): Promise<void> {
     store.recordError(id, `The engine stopped unexpectedly (exit code ${code}).`);
     showProjects();
   });
-  host.postMessage({ type: 'start', root: project.root, webDir: join(resourcesDir(), 'web') } satisfies ToHost);
+  host.postMessage({ type: 'start', root: project.root, webDir: join(resourcesDir(), 'web'), ai: project.ai ?? null } satisfies ToHost);
 }
 
 /** Adds a folder if it is new, then opens it: the command line, File → Open Project… and a second launch. */
@@ -357,7 +357,7 @@ function startScan(id: string, scan: { reset: boolean; host?: UtilityProcess; si
     else if (message.type === 'failed') finish(() => store.recordError(id, message.message));
   });
   host.on('exit', (code) => finish(() => store.recordError(id, `The scan stopped unexpectedly (exit code ${code}).`)));
-  host.postMessage({ type: 'scan', root: project.root, reset: scan.reset } satisfies ToHost);
+  host.postMessage({ type: 'scan', root: project.root, reset: scan.reset, ai: project.ai ?? null } satisfies ToHost);
   return true;
 }
 
@@ -369,6 +369,79 @@ function openInEditor(root: string): void {
   const PATH = shellPath() ?? '';
   const editor = findEditor(PATH, process.env.EYRIE_EDITOR);
   if (editor) spawn(editor.cmd, [root], { detached: true, stdio: 'ignore', env: { ...process.env, PATH } }).unref();
+}
+
+/** The AI backends a project's commits can be noted by, with what the user is told before turning one on. */
+const AI_CHOICES = [
+  {
+    backend: 'claude',
+    name: 'Claude',
+    command: 'claude',
+    install: 'Commit analysis runs your Claude Code CLI. Install it and sign in by running `claude` once in a terminal, then try again.',
+    sends: 'Claude Code sends this to Anthropic under your account and usage.',
+  },
+  {
+    backend: 'codex',
+    name: 'Codex',
+    command: 'codex',
+    install: 'Commit analysis runs your Codex CLI. Install it and sign in by running `codex` once in a terminal, then try again.',
+    sends:
+      'Codex sends this to OpenAI under your account and usage. Eyrie runs Codex inside a macOS sandbox that stops it reading or changing anything in your home folder, so it cannot run commands or look at your files.',
+  },
+] as const;
+type AiChoice = (typeof AI_CHOICES)[number];
+
+/** Codex runs only inside the macOS sandbox, so it is offered on macOS only. */
+const aiChoices = (): readonly AiChoice[] => AI_CHOICES.filter((c) => c.backend !== 'codex' || process.platform === 'darwin');
+
+/**
+ * Turns AI notes on a project's commits on (with this backend) or off.
+ * Turning them on says what leaves the machine and asks first, since it is
+ * the only thing Eyrie sends anywhere; then a scan records and notes the
+ * history straight away. Choosing the backend already on turns notes off.
+ */
+async function toggleAi(id: string, choice: AiChoice): Promise<void> {
+  const project = store.get(id);
+  if (!project || !window) return;
+  if (project.ai === choice.backend) {
+    store.setAi(id, undefined);
+    notify();
+    return;
+  }
+  if (!onPath(choice.command, shellPath() ?? '')) {
+    dialog.showErrorBox(`${choice.name} is not installed`, choice.install);
+    return;
+  }
+  const { response } = await dialog.showMessageBox(window, {
+    type: 'question',
+    buttons: ['Analyse Commits', 'Cancel'],
+    defaultId: 0,
+    cancelId: 1,
+    message: `Analyse ${project.name}'s commits with ${choice.name}?`,
+    detail:
+      `Eyrie will run your ${choice.name} CLI on the commits it records, to note what each one is for, whether what it changed matches its message, and its architectural risk.\n\n` +
+      `It sends commit messages, author names, changed file paths with line counts and the names of the components involved. It never sends source code. ${choice.sends}\n\n` +
+      `Notes are saved in the project's knowledge.db. You can turn this off at any time.${project.ai ? ` This replaces notes by ${project.ai}.` : ''}${live?.id === id ? ' It starts the next time the project opens.' : ''}`,
+  });
+  if (response !== 0) return;
+  store.setAi(id, choice.backend);
+  notify();
+  if (live?.id !== id) queueScan(id, false);
+}
+
+/** The MCP clients the menu can copy a setup command for: both take `<client> mcp add <name> -- <command>`. */
+const MCP_CLIENTS = [
+  { command: 'claude', name: 'Claude Code' },
+  { command: 'codex', name: 'Codex' },
+] as const;
+
+/** `<client> mcp add` for this project, running the CLI from this checkout of Eyrie. Unpackaged only: the app ships no CLI yet. */
+function mcpCommand(project: { name: string; root: string }, client: (typeof MCP_CLIENTS)[number]): string | null {
+  if (app.isPackaged) return null;
+  const repo = join(app.getAppPath(), '..', '..');
+  const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+  const name = `eyrie-${project.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'}`;
+  return `${client.command} mcp add ${name} -- ${quote(join(repo, 'node_modules', '.bin', 'tsx'))} ${quote(join(repo, 'packages', 'server', 'src', 'cli.ts'))} mcp ${quote(project.root)}`;
 }
 
 /** The project's actions as a native menu, for its ⋯ button and a right-click on its row. */
@@ -389,6 +462,14 @@ function showProjectMenu(id: string, at?: { x: number; y: number }): void {
     { label: editor ? `Open in ${editor.name}` : 'Open in Editor', enabled: !missing && !!editor, click: () => openInEditor(project.root) },
     { label: REVEAL_LABEL, enabled: !missing, click: () => shell.showItemInFolder(project.root) },
     { label: 'Copy Path', click: () => clipboard.writeText(project.root) },
+    ...MCP_CLIENTS.flatMap((client) => {
+      const command = mcpCommand(project, client);
+      return command ? [{ label: `Copy MCP Command for ${client.name}`, click: () => clipboard.writeText(command) }] : [];
+    }),
+    { type: 'separator' },
+    ...aiChoices().map(
+      (choice): MenuItemConstructorOptions => ({ label: `Analyse Commits with ${choice.name}`, type: 'checkbox', checked: project.ai === choice.backend, enabled: !missing, click: () => void toggleAi(id, choice) }),
+    ),
     { type: 'separator' },
     ...(isLive ? [{ label: 'Close Project', click: () => void closeProject() }] : []),
     { label: 'Remove from List', click: () => void removeProject(id) },

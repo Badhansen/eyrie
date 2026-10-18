@@ -10,12 +10,16 @@ const EDITORS: { cmd: string; name: string }[] = [
   { cmd: 'zed', name: 'Zed' },
 ];
 
+/** Whether `cmd` is an absolute path that exists, or a program in one of `path`'s folders. */
+export function onPath(cmd: string, path: string): boolean {
+  if (isAbsolute(cmd)) return existsSync(cmd);
+  return path.split(delimiter).some((dir) => dir && existsSync(join(dir, cmd)));
+}
+
 /** The editor to open a project folder with: `configured` (EYRIE_EDITOR) when set, else the first known editor on `path`. */
 export function findEditor(path: string, configured?: string): { cmd: string; name: string } | undefined {
-  const dirs = path.split(delimiter).filter(Boolean);
-  const found = (cmd: string) => (isAbsolute(cmd) ? existsSync(cmd) : dirs.some((dir) => existsSync(join(dir, cmd))));
   const candidates = configured ? [{ cmd: configured, name: basename(configured) }] : EDITORS;
-  return candidates.find((editor) => found(editor.cmd));
+  return candidates.find((editor) => onPath(editor.cmd, path));
 }
 
 /**

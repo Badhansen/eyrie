@@ -1,0 +1,13 @@
+{
+  "name": "@eyrie/knowledge",
+  "version": "0.1.0",
+  "description": "Durable project knowledge: the git history Eyrie has seen, mapped onto the architecture, and optional AI notes on it",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@eyrie/core": "workspace:*"
+  }
+}

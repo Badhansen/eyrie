@@ -50,6 +50,9 @@ importers:
       '@eyrie/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@eyrie/knowledge':
+        specifier: workspace:*
+        version: link:../../packages/knowledge
       '@eyrie/parser':
         specifier: workspace:*
         version: link:../../packages/parser
@@ -196,6 +199,12 @@ importers:
         specifier: workspace:*
         version: link:../parser
 
+  packages/knowledge:
+    dependencies:
+      '@eyrie/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/lens:
     dependencies:
       '@eyrie/core':
@@ -253,6 +262,12 @@ importers:
       '@eyrie/engine':
         specifier: workspace:*
         version: link:../engine
+      '@eyrie/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
+      '@eyrie/lens':
+        specifier: workspace:*
+        version: link:../lens
       ws:
         specifier: 8.22.0
         version: 8.22.0

@@ -25,7 +25,72 @@ pnpm start -- /path/to/your/repo
 
 This builds the UI, indexes the repository, and opens `http://127.0.0.1:4319/?token=…` in your browser. Leave it running and edit code in the repository; the map follows.
 
-Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore the cache), `--host <h>`.
+Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore the cache), `--host <h>`, `--ai claude` or `--ai codex` (notes on commits; see [Commit history and AI notes](#commit-history-and-ai-notes)).
+
+## Use it from a coding agent (MCP)
+
+`eyrie mcp` serves a repository's live architecture to coding agents over the [Model Context Protocol](https://modelcontextprotocol.io), on stdio. Any MCP client can run it; replace `/path/to/eyrie` with this checkout and `/path/to/your/repo` with the project. `pnpm --silent` keeps pnpm's own output off the protocol stream.
+
+**Claude Code** and **Codex** have the same one-line setup:
+
+```bash
+claude mcp add eyrie -- pnpm --silent --dir /path/to/eyrie eyrie mcp /path/to/your/repo
+```
+
+```bash
+codex mcp add eyrie -- pnpm --silent --dir /path/to/eyrie eyrie mcp /path/to/your/repo
+```
+
+**Gemini CLI** (`.gemini/settings.json` in the project, or `~/.gemini/settings.json`) and **Cursor** (`.cursor/mcp.json` in the project, or `~/.cursor/mcp.json`) read the same `mcpServers` block:
+
+```json
+{
+  "mcpServers": {
+    "eyrie": {
+      "command": "pnpm",
+      "args": ["--silent", "--dir", "/path/to/eyrie", "eyrie", "mcp", "/path/to/your/repo"]
+    }
+  }
+}
+```
+
+**VS Code** (GitHub Copilot in agent mode) reads `.vscode/mcp.json`, with `servers` instead of `mcpServers`:
+
+```json
+{
+  "servers": {
+    "eyrie": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["--silent", "--dir", "/path/to/eyrie", "eyrie", "mcp", "/path/to/your/repo"]
+    }
+  }
+}
+```
+
+Tested end to end with Claude Code and Codex; Gemini CLI, Cursor and VS Code use their standard MCP configuration and were not tested here. Windsurf, Zed and other clients take the same command and arguments in their own MCP settings.
+
+The agent then has read-only tools that answer from the same graph as the map, kept current as files are saved:
+
+| Tool | Answers |
+| --- | --- |
+| `architecture_overview` | Components by lane, size, the most connected components |
+| `find_components`, `explain_component` | What a component is, its files and symbols, what it uses and what uses it, recent commits that touched it |
+| `impact`, `trace` | Everything that depends on a component (what could break), or everything it reaches |
+| `find_path` | The chain of dependencies between two components |
+| `components_for_files` | Which components own the files the agent is about to edit |
+| `recent_changes` | What the agent's edits changed in the architecture since the server started |
+| `commit_history` | Recorded commits, the agents that co-authored them, and AI notes when turned on |
+
+A name that matches several components is refused with the candidates rather than guessed. When the desktop app runs from a checkout, its project menu has **Copy MCP Command for Claude Code** and **for Codex**.
+
+## Commit history and AI notes
+
+Whenever Eyrie opens or scans a project, it records the commits it has not seen yet in the project's `knowledge.db`: the message, the author and any coding agent in a `Co-Authored-By` trailer, the files changed with line counts, and the architecture components those files belong to. While a project is open it checks for new commits every 15 seconds.
+
+Optionally, Eyrie has each commit **noted** by your Claude Code or Codex CLI: what the commit is for, whether what it changed matches its message, and its architectural risk. A commit titled "fix: typo in checkout" that also edits the data model is flagged. Turn it on per project in the desktop app (**Analyse Commits with Claude** or **with Codex** in the project's ⋯ menu), or with `--ai claude` / `--ai codex` (or `EYRIE_AI`) on the command line. It is off by default. Codex is available on macOS only for now, because Eyrie runs it inside a macOS sandbox (see [Privacy and security](#privacy-and-security)).
+
+Notes are opinions, kept beside the facts and labelled with the model that wrote them. Every observation must cite a file or component the commit actually touched, or the note is rejected. A note never becomes a dependency, a finding or a rule.
 
 ## Supported languages
 
@@ -60,14 +125,16 @@ Generated code is skipped (`*.pb.go`, `*_pb2.py`, `*.Designer.cs`, `*.d.ts`), an
 ## How it works
 
 ```
-files ──► parser (tree-sitter) ──► facts per file ──► code graph ──► architecture graph ──► UI
-             cached by content hash      (Graphology + SQLite)    (deterministic rules)    (ELK layout; React Flow 2D,
-                                                                                            Three.js city; anime.js motion)
-                                              ▲
-file watcher ── changed files only ───────────┘   diffs ──► WebSocket events ──► animations
+files ──► parser (tree-sitter) ──► facts per file ──► code graph ──► architecture graph ──┬─► UI (ELK layout; React Flow 2D,
+             cached by content hash      (Graphology + SQLite)    (deterministic rules)     │       Three.js city; anime.js motion)
+                                              ▲                                            ├─► MCP server ──► coding agents
+file watcher ── changed files only ───────────┘   diffs ──► WebSocket events ──► animations │
+git log ── new commits ──► knowledge.db ◄── components each commit touched ◄───────────────┘
+                              ▲
+                              └── optional AI notes (your Claude Code CLI, opt-in)
 ```
 
-**Code graph first. Visualization second. AI third.** Every relationship comes from static analysis. There is no AI in the pipeline today; when it arrives it will annotate the graph (summaries, grouping suggestions, Q&A), never invent dependencies.
+**Code graph first. Visualization second. AI third.** Every relationship comes from static analysis. AI is optional and only annotates: today, notes on recorded commits. It never invents a dependency.
 
 1. **Facts.** Each file is parsed once with tree-sitter (WASM) into *facts*: imports, exports, symbols, call/`new`/JSX references with their enclosing symbol, literal arguments (for `fetch('/api/...')`), route registrations, ORM models. Every language has its own adapter, but they all produce the same facts, so everything downstream is language-neutral. Facts depend only on the file's content, so they are cached in SQLite by hash; restarts reuse them.
 2. **Code graph.** Facts become nodes (files, functions, classes, methods, components, hooks, API routes, middleware, data models, external services) and edges (`CONTAINS`, `IMPORTS`, `EXPORTS`, `CALLS`, `USES`, `EXTENDS`, `IMPLEMENTS`, `HTTP_CALL`, `READS_FROM`, `WRITES_TO`, `DEPENDS_ON`). Resolution follows relative imports, tsconfig/jsconfig `paths` and `baseUrl`, workspace packages, barrels and re-exports, class instances, `this.field` types, typed parameters and object-literal services. Outside JavaScript it also follows Python dotted modules and packages, Go packages (directories, via `go.mod`), Java / C# / PHP namespaces and wildcard imports, Rust `mod` trees and `use` paths, and Ruby autoloaded constants, plus names visible without an import (same Go package, same Java or C# namespace). `self`, receivers, `$this`, `@ivar` and injected fields all resolve like `this.field`. Every edge carries a confidence.
@@ -95,12 +162,17 @@ file watcher ── changed files only ───────────┘   di
 
 ## Privacy and security
 
-**Eyrie collects no personal data and makes no network requests.** The only thing it stores is a local analysis cache of the repository you point it at (file paths, symbol names and the graph built from them) under `~/.eyrie`. Nothing leaves your machine, and you can delete the cache at any time.
+**Eyrie has no accounts, no telemetry and no server of its own.** It stores two files per repository under `~/.eyrie/repos/<hash>/`: an analysis cache (`graph.db`: file paths, symbol names and the graph built from them) and `knowledge.db`, the commits it has recorded (messages, authors' and co-authors' names and email addresses as git has them, changed paths) and any AI notes on them. Delete either at any time.
 
-- Everything runs locally. Eyrie makes no network requests; fonts are bundled.
+- **With AI notes off, the default, nothing leaves your machine.** Eyrie makes no network requests; fonts are bundled.
+- **With AI notes on** for a project, Eyrie runs your Claude Code or Codex CLI on recorded commits. It sends commit messages, author names, changed file paths with line counts and the names of the architecture components involved, and never source code. The CLI sends them to Anthropic or OpenAI under your own account.
+  - **Claude Code** runs with no tools, no MCP servers and none of your settings, in an empty temporary folder, so the model can read nothing else and change nothing.
+  - **Codex** keeps a command tool that cannot be turned off, and its own read-only sandbox still lets commands read any of your files. So Eyrie runs Codex itself inside a macOS sandbox: it can write nowhere except one empty workspace (holding a copy of Codex's login) and `/dev`, and it cannot read file contents or list folders in your home folder, your temporary folder or on external drives. Codex's command sandbox cannot start inside it, so no command runs at all, and Codex also runs read-only, without your config, rules, saved session, web search, connectors, plugins or its code-mode tools. Tested with Codex's own protections deliberately switched off: its patch tool and shell could write only inside the workspace, and reading `~/.ssh` was refused. System files outside your home folder, such as `/etc/hosts`, stay readable, and no command can run to read them.
 - The server binds to `127.0.0.1`, requires a random per-run access token, and rejects requests whose `Host` header is not local (DNS-rebinding protection).
 - The source endpoint only serves files that are in the index. `.env` files, keys and anything ignored by git are never readable through it.
-- The cache lives in `~/.eyrie/repos/<hash>/graph.db` (override with `EYRIE_HOME`). Delete that directory, or run with `--reset`, to start fresh.
+- The MCP server has no network listener: it talks only to the agent that started it, over stdio, and every tool is read-only.
+- `git` runs without a shell and with the settings a repository could use to run its own programs turned off.
+- The data lives in `~/.eyrie/repos/<hash>/` (override with `EYRIE_HOME`). Delete that directory, or run with `--reset`, to start fresh.
 
 Found a security problem? Please report it privately. See [SECURITY.md](SECURITY.md).
 
@@ -112,10 +184,11 @@ packages/
   parser/        tree-sitter (WASM) language adapters → facts (TS/JS, Python, Go, Java, C#, PHP, Ruby, Rust); Prisma schema reader
   graph/         module resolution, relationship resolution, incremental code graph, queries
   architecture/  code graph → architecture graph (classification, lifting, pass-through)
-  lens/          views over the architecture graph: data flow, sequence
+  lens/          views over the architecture graph: data flow, sequence, System; trace, impact and paths
   storage/       SQLite (node:sqlite) facts cache, nodes and edges
   engine/        scanning, ignore rules, config loading, watching, update pipeline
-  server/        CLI, HTTP API and WebSocket
+  knowledge/     knowledge.db: recorded git commits mapped onto components; optional AI notes (Claude Code or Codex CLI)
+  server/        CLI, HTTP API, WebSocket and the MCP server (`eyrie mcp`)
 apps/
   web/           React UI: ELK layout, React Flow navigation, Three.js 3D city, anime.js animation
   desktop/       Electron shell (Electron Forge): runs the engine in a utility process and shows the UI
@@ -132,6 +205,7 @@ pnpm test          # parser, graph, architecture, lens, engine (real file watche
 pnpm typecheck
 pnpm dev           # engine on :4319 (fixture app, token "dev") + UI with hot reload on :5173
 pnpm desktop       # the desktop app (Electron); see apps/desktop/README.md
+pnpm eyrie mcp fixtures/bookstore-app   # the MCP server on stdio, for trying it with a client
 
 pnpm smoke:fetch   # clone a real MIT-licensed Next.js app into .smoke/ (once)
 pnpm smoke         # scan that real repo end to end; skips if it was never fetched
@@ -157,10 +231,10 @@ To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed`
 - [x] **Phase 1: static architecture map.** Scanner, tree-sitter parsing, symbols, imports/exports, calls, React and Next.js detection, code graph, architecture graph, interactive map, details panel.
 - [x] **Phase 2: live graph.** File watcher, incremental resolution with reverse-dependency invalidation, graph diffs, WebSocket events, animated updates, stable layout, change tape.
 - [ ] **Phase 3: navigation.** Done: search, open in editor, jump to line, category filters, data-flow, sequence and System lenses. Next: nested group boundaries, expanding a box in place.
-- [ ] **Phase 4: graph intelligence.** Done: trace (downstream) and impact (upstream) on the architecture graph. Next: shortest path between two components, code-level impact.
-- [ ] **Phase 5: AI understanding.** Optional, graph-backed summaries and Q&A (local models via Ollama first).
+- [ ] **Phase 4: graph intelligence.** Done: trace (downstream) and impact (upstream) on the architecture graph, and the shortest path between two components (MCP `find_path`). Next: path finding in the UI, code-level impact.
+- [ ] **Phase 5: AI understanding.** Done: commit history in `knowledge.db` and optional AI notes on each commit through the Claude Code or Codex CLI. Next: architecture rules and findings with AI explanations ([Knowledge Loop](docs/06-implementation-plan/feature-knowledge/README.md)), more backends.
 - [ ] **Phase 6: Git intelligence.** Working-tree overlays, branch and commit architecture diffs, timeline.
-- [ ] **Phase 7: coding-agent integration.** Attribute changes to agent sessions (for example via Claude Code hooks), and expose the graph to agents over MCP.
+- [ ] **Phase 7: coding-agent integration.** Done: the MCP server (`eyrie mcp`) and agent attribution from `Co-Authored-By` trailers. Next: an MCP `check` tool and Claude Code hooks that hand new architecture violations back to the agent, and the MCP server in the packaged desktop app.
 - [ ] **Desktop app.** An Electron shell (Electron Forge) around the same UI, running the engine in a utility process. A first, unsigned version packages and runs on macOS from [`apps/desktop`](apps/desktop/README.md); signing, installers for every platform and background watching are next.
 
 ## Known limitations

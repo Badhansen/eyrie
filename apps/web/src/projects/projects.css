@@ -92,6 +92,7 @@
 .project-stats > div { display: flex; align-items: baseline; gap: 5px; }
 .project-stats dd { color: var(--color-text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .project-frameworks { margin-top: 5px; color: var(--color-faint); font: 10px var(--font-mono); }
+.project-history { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-faint); font: 10px var(--font-mono); font-variant-numeric: tabular-nums; }
 .project-never { color: var(--color-faint); font-size: 12px; }
 
 .project-when { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--color-dim); font-size: 12px; white-space: nowrap; }

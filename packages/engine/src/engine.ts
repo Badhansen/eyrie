@@ -76,6 +76,8 @@ const toPosix = (p: string) => p.split(sep).join('/');
  */
 export class GraphEngine extends EventEmitter<{ batch: [EngineBatch]; error: [Error]; ready: [] }> {
   readonly root: string;
+  /** Where this repository's cache lives (graph.db), and other per-project data such as knowledge.db. */
+  readonly dataDir: string;
   repo!: RepoInfo;
   index!: GraphIndex;
   architecture: ArchGraph = { nodes: [], edges: [] };
@@ -97,6 +99,7 @@ export class GraphEngine extends EventEmitter<{ batch: [EngineBatch]; error: [Er
   constructor(private readonly opts: EngineOptions) {
     super();
     this.root = resolve(opts.root);
+    this.dataDir = opts.dataDir ?? join(process.env.EYRIE_HOME ?? join(homedir(), '.eyrie'), 'repos', hash53(this.root));
     this.log = opts.log ?? (() => {});
   }
 
@@ -332,9 +335,8 @@ export class GraphEngine extends EventEmitter<{ batch: [EngineBatch]; error: [Er
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private openStorage(): void {
-    const dir = this.opts.dataDir ?? join(process.env.EYRIE_HOME ?? join(homedir(), '.eyrie'), 'repos', hash53(this.root));
     try {
-      this.storage = GraphStorage.open(join(dir, 'graph.db'), { factsVersion: FACTS_VERSION });
+      this.storage = GraphStorage.open(join(this.dataDir, 'graph.db'), { factsVersion: FACTS_VERSION });
     } catch (err) {
       this.log(`Cache disabled: ${(err as Error).message}`);
       this.storage = null;

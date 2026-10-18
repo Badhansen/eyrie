@@ -20,6 +20,9 @@ export interface ProjectScan {
   components: number;
   links: number;
   frameworks: string[];
+  /** Commits recorded in the project's knowledge.db, and how many have an AI note. */
+  commits?: number;
+  analysed?: number;
 }
 
 export interface Project {
@@ -33,6 +36,8 @@ export interface Project {
   scan?: ProjectScan;
   /** Why the last scan or open failed; cleared by the next one that succeeds. */
   error?: string;
+  /** The AI backend that notes this project's commits (`claude`), when the user turned it on. */
+  ai?: string;
 }
 
 interface StoredList {
@@ -107,12 +112,18 @@ export class ProjectStore {
 
   /** Records what a scan or an open found, and clears an earlier error. */
   recordIndex(id: string, summary: IndexSummary, now = Date.now()): void {
-    const { repo, stats, ms } = summary;
-    this.patch(id, {
-      name: repo.name || this.get(id)?.name,
-      error: undefined,
-      scan: { at: now, ms, files: stats.files, symbols: stats.symbols, components: stats.archNodes, links: stats.archEdges, frameworks: [...repo.frameworks] },
-    });
+    const { repo, stats, ms, knowledge } = summary;
+    const scan: ProjectScan = { at: now, ms, files: stats.files, symbols: stats.symbols, components: stats.archNodes, links: stats.archEdges, frameworks: [...repo.frameworks] };
+    if (knowledge) {
+      scan.commits = knowledge.commits;
+      scan.analysed = knowledge.analysed;
+    }
+    this.patch(id, { name: repo.name || this.get(id)?.name, error: undefined, scan });
+  }
+
+  /** Turns AI notes on (a backend name) or off (undefined) for a project. */
+  setAi(id: string, ai: string | undefined): void {
+    this.patch(id, { ai });
   }
 
   recordError(id: string, message: string): void {

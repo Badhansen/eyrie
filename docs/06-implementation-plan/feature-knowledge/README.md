@@ -4,8 +4,8 @@
 | --- | --- |
 | Product | Eyrie |
 | Owner | Badhan Sen |
-| Status | **Partly built.** The System lens and a review prototype (`pnpm arch`) exist. The loop itself — policies, findings in the product, adaptation, AI explanations — is proposed |
-| Last updated | 2026-10-14 |
+| Status | **Partly built.** The System lens, a review prototype (`pnpm arch`), the product's `knowledge.db` with recorded commits and optional AI commit notes, and an MCP server for coding agents exist. The loop itself — policies, findings in the product, adaptation, AI explanations of findings — is proposed |
+| Last updated | 2026-10-18 |
 | Answers | How does Eyrie keep an architecture honest while the code changes, and show a developer what matters? |
 | Replaces | The original AI-features proposal (a PDF, kept with the research material outside this repository), its review, and a separate build plan — all folded in here |
 | Related | [PRD](../../01-product-requirements/README.md) · [TRD](../../02-technical-requirements/README.md) · [Backend Schema](../../05-backend-schema/README.md) · [Implementation Plan](../README.md) · [PRODUCT.md](../../../PRODUCT.md) · [`pnpm arch`](../../../scripts/arch-review/README.md) |
@@ -29,11 +29,15 @@ What improves over time is the relevance of the guidance, at preserved detection
 | **System lens** — the whiteboard view: one box per app or package and per layer, external services and missing routes as their own boxes, labelled links. Key `4` | [`packages/lens/src/system.ts`](../../../packages/lens/src/system.ts), web app | Shipped |
 | **Review prototype** — 13 deterministic checks, a durable SQLite store (`.eyrie/knowledge.db`) with finding history, and a protocol for people and AI agents to add issues, proposals and reviews with `path:line` evidence. Triage and decisions are human-only | [`scripts/arch-review/`](../../../scripts/arch-review/README.md) | Developer tool, outside the product packages |
 | **Route scoping fix** — a relative `fetch('/api/…')` inside one Next.js app no longer links to a sibling app's route | `packages/graph/src/code-graph.ts` (`matchRoute`) | Shipped, with a regression test |
+| **Commit history** — on every open and scan, and whenever HEAD moves while a project is open, the commits not yet recorded go into a durable, add-only `knowledge.db`, each mapped onto the architecture components its files belong to, with coding agents read from `Co-Authored-By` | [`packages/knowledge`](../../../packages/knowledge/src/knowledge.ts) | Shipped: CLI, desktop open and scan, MCP |
+| **AI commit notes** — the first AI role, opt-in per project: intent, whether the change matches its message, risk, and up to three observations, each citing a file or component of that commit or the note is stored `rejected`. A note is an annotation, never a finding. The first answer the explainer role (§9) can build on | [`packages/knowledge/src/analysis.ts`](../../../packages/knowledge/src/analysis.ts) | Shipped; Claude Code CLI and Codex CLI (macOS) backends |
+| **Trace, impact and paths outside the browser** — moved from the web app into `@eyrie/lens` (prerequisite noted below) | [`packages/lens/src/focus.ts`](../../../packages/lens/src/focus.ts) | Shipped |
+| **MCP server** — `eyrie mcp`: read-only tools over the live graph for coding agents, including `components_for_files` before an edit and `recent_changes` after it; the first half of the guardrail in §16 | [`packages/server/src/mcp.ts`](../../../packages/server/src/mcp.ts) | Shipped (stdio; not yet in the packaged desktop app) |
 
 **First self-review of Eyrie** (`pnpm arch scan` at `3cfaad8`): no package or file cycles; nothing reachable from the browser bundle imports a Node built-in; 4 warnings and 38 informational findings. The ones that matter for this feature:
 
 - Import edges between two files are merged into one, keeping only the first statement's line and type-only flag, so a later runtime import can be hidden. **Open.**
-- Trace and impact exist only in the browser; the engine cannot answer "what does this affect". Prerequisite for build step 7.
+- Trace and impact exist only in the browser; the engine cannot answer "what does this affect". Prerequisite for build step 7. **Resolved 2026-10-18:** both live in `@eyrie/lens`, used by the UI and the MCP server.
 - Change history lives only in browser memory (last 240 batches).
 - `@eyrie/core` and `@eyrie/storage` have no tests of their own; storage holds the cache-invalidation logic.
 
@@ -191,7 +195,11 @@ A finding can produce a **hand-off brief** (evidence, decision, impact) for the 
 
 ## 10. AI integration
 
-**Backends**, behind one interface (`run({ prompt, schema, timeoutMs, signal }) → { json, usage }`): an HTTP API (Anthropic, OpenAI-compatible, Ollama) first, because it is tool-free; then Claude Code (`claude -p … --output-format json`), Codex (`codex exec`, read-only by default) and Antigravity (`agy -p … --json-schema`), each verified per version at build time. Antigravity's headless mode allows writing files in its working folder, and an open issue reports `agy -p` hanging without a TTY.
+**Backends**, behind one interface (`run({ system, prompt, schema, timeoutMs, signal }) → { json, model, usage }`, `AiBackend` in `packages/knowledge/src/analysis.ts`). The plan was an HTTP API first, because it is tool-free; **decided 2026-10-18: the Claude Code CLI first**, because it needs no API key held by Eyrie and uses the account the user already has. It runs as `claude --print --output-format json --json-schema … --system-prompt … --tools "" --strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources local --no-session-persistence --disable-slash-commands`, with the prompt on stdin, in an empty temporary folder, without the parent's `CLAUDECODE` variables — so no tools, MCP servers, user or project settings (no hooks or plugins), saved session or project files. Verified with Claude Code 2.1.267.
+
+**Codex, added 2026-10-18 (macOS only).** Checked against Codex 0.160 before building it: `--sandbox read-only` blocks writes but lets commands read any file the user can (`~/.ssh`, Codex's own login, `~/Documents`), and the command tool cannot be removed (`--disable unified_exec` has no effect; disabling `multi_agent` leaves the collaboration tools). Without more, an instruction hidden in a commit message could have a private file read and sent to OpenAI. So `codex exec` runs with its own lock-down flags (read-only, `--ignore-user-config`, `--ignore-rules`, `--ephemeral`, approvals never, web search off, the features that add connectors, plugins, skills, browser and computer use, sub-agents and images disabled; this cut the tool list from 159 to 12) **inside an OS sandbox**: `sandbox-exec` with a profile that denies `file-write*` everywhere except a fresh workspace (holding the schema and a copy of Codex's login, copied back if Codex refreshes it) and `/dev`, and denies `file-read-data` under the home folder, the per-user temp folder and `/Volumes` outside that workspace. Three layers then stop a model acting on the machine: with `code_mode_host` disabled, Codex's exec and patch tools fail ("code-mode host is disabled"); Codex's command sandbox cannot start inside the OS sandbox (`sandbox_apply: Operation not permitted`); and the OS sandbox holds on its own — tested with Codex's sandbox set to `danger-full-access` and its tools re-enabled, `apply_patch` and shell writes succeeded only inside the workspace (outside: "Failed to write file", "operation not permitted") and listing `~/.ssh` was refused. A run whose events show a completed command is discarded anyway. Residual exposure: file metadata everywhere, and the contents of system files outside the home folder (`/etc/hosts`), are readable to the Codex process itself, with no tool left that could read them. Codex needs a strict schema (closed objects, every property required), so optional fields are sent as nullable. This is the isolation §10 asked of every CLI backend, enforced by the OS. Linux and Windows need their own sandbox before Codex is offered there.
+
+An HTTP API and Antigravity (`agy -p … --json-schema`; its headless mode can write files in its folder) follow behind the same interface, each verified per version at build time. Antigravity's headless mode allows writing files in its working folder, and an open issue reports `agy -p` hanging without a TTY.
 
 **Isolation.** A scratch working directory is not a sandbox: a process can still use absolute paths or spawn others. CLI backends run only with OS-enforced read-only or sandbox modes, and are tested for outside writes, absolute-path reads, subprocesses, cancellation and instructions hidden in repository text. Repository text is data in prompts, never instructions.
 
@@ -206,7 +214,7 @@ A finding can produce a **hand-off brief** (evidence, decision, impact) for the 
 | Store | Lifetime | Holds |
 | --- | --- | --- |
 | `graph.db` (exists) | **Disposable cache**; a `SCHEMA_VERSION` bump drops it | Parse facts, code graph |
-| `knowledge.db` | **Durable**; versioned migrations that only add | Runs, findings and their observations and events, feedback, policy versions, decisions, explanations, jobs, trends |
+| `knowledge.db` | **Durable**; versioned migrations that only add (`PRAGMA user_version`) | Built: recorded commits and AI commit notes, at `~/.eyrie/repos/<hash>/knowledge.db` next to `graph.db` ([docs/05](../../05-backend-schema/README.md)). Planned: runs, findings and their observations and events, feedback, policy versions, decisions, explanations, jobs, trends. The `pnpm arch` prototype keeps its own database in the repository's `.eyrie/` until it moves in |
 | `.eyrie/` in the repo | Versioned with the code | Policy file, accepted decisions, baseline (open decision 1) |
 
 The prototype's store ([`scripts/arch-review/db.ts`](../../../scripts/arch-review/db.ts)) already implements runs, fingerprinted findings with per-run observations, append-only events, issues, proposals, reviews and decisions, with observation and triage kept separate. Moving it into a `@eyrie/knowledge` package is the first build step.
@@ -234,10 +242,11 @@ An Electron app ([`apps/desktop`](../../../apps/desktop/README.md), built with E
 | High-level view | ✅ System lens | Nested boundaries, expand in place, written overlay |
 | Deterministic checks | ✅ 13 checks in the prototype | Policy checker for §6 rules |
 | Durable findings with history | ✅ Prototype store | Move into the product as `@eyrie/knowledge`; project/checkout identity |
-| Trace and impact | ✅ Browser only | Shared package used by engine and UI |
+| Trace and impact | ✅ Shared in `@eyrie/lens`, used by the UI and the MCP server | Code-level impact |
 | Change history | Browser memory, 240 batches | Server-side record |
 | Feedback, adaptation | Prototype records triage and decisions | Candidate generation, preview, gate, versioned policy |
-| AI explanations | — | Gate, one tool-free adapter, validation |
+| AI explanations | ✅ Commit notes: one backend (Claude Code CLI), validation against the commit's evidence, per-input hashes, retries | Explanations of findings; inference gate and caching by dependency manifest |
+| Agent access | ✅ MCP server, read-only | A `check` tool and agent hooks that return new findings to the agent (§16) |
 | Desktop shell | First version: one window, one project, engine in a utility process; packages on macOS | Tray, background watching, several projects, signing |
 
 ## 15. Build order
@@ -259,7 +268,19 @@ Each step has a completion condition, as in [docs/06](../README.md).
 
 **Deferred** until the loop works: the desktop shell, several AI backends, digests, broad Q&A, external memory. They widen the product without testing whether adaptation helps.
 
-## 16. Risks
+## 16. The agent guardrail
+
+The direction this loop serves for coding agents: **let a coding agent move fast without quietly breaking a codebase's architecture.** A guardrail speaks at the three moments an agent can still act on it, and deterministic checks decide; AI only explains.
+
+| Moment | How | State |
+| --- | --- | --- |
+| Before an edit | The agent asks over MCP what the files belong to (`components_for_files`) and what depends on them (`impact`) | Shipped |
+| After each save | The engine re-indexes in milliseconds; the agent sees what moved (`recent_changes`). Next: a `check` tool and a Claude Code hook that hands a new violation straight back to the agent | Partly shipped |
+| At commit and pull request | Every commit is recorded with the components it touched and the agent that co-authored it; an optional note flags a commit whose changes do not match its message. Next: `eyrie check main..HEAD`, failing only on new, non-baseline findings | Partly shipped |
+
+Without rules (§6) the guardrail can report cycles, hubs and mismatches, but cannot know what "breaking" means for a codebase; baseline and suggested rules are what make the first run useful.
+
+## 17. Risks
 
 | Risk | Mitigation |
 | --- | --- |
@@ -272,11 +293,11 @@ Each step has a completion condition, as in [docs/06](../README.md).
 | Scope creep into code review | Findings stay structural: dependencies, layers, cycles, coupling |
 | Privacy claims drift | Off by default; README, PRD and docs/05 §10 updated in the same change that ships a backend |
 
-## 17. Open decisions
+## 18. Open decisions
 
 1. **Where policy, decisions and baseline live**: in the repository under `.eyrie/` (shared, per branch, reviewed in PRs) or only on the machine. Eyrie's own `.gitignore` ignores `.eyrie/` today.
 2. **May Eyrie write `.eyrie/*` on an explicit Accept?** A narrow exception to "Eyrie reads; your editor writes" — or Eyrie shows the content and the developer saves it.
-3. **First AI backend and default state.** Recommended: a tool-free HTTP adapter first; AI off by default.
+3. **First AI backend and default state.** Decided 2026-10-18: the Claude Code CLI, then the Codex CLI inside a macOS sandbox, both locked down as in §10; off by default, on per project after the user is told what is sent.
 4. **Desktop notifications**: on, off, or off by default.
 5. **Distribution**: does the desktop app become primary (blocking decision 4 in [docs/06](../README.md))?
 
