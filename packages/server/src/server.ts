@@ -5,9 +5,12 @@ import { delimiter, extname, join, normalize, resolve } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { GraphEvent, ServerMessage } from '@eyrie/core';
 import type { EngineBatch, GraphEngine } from '@eyrie/engine';
+import { commitView, type ProjectKnowledge } from '@eyrie/knowledge';
 
 export interface ServerOptions {
   engine: GraphEngine;
+  /** The project's recorded git history, served at /api/commits. */
+  knowledge?: ProjectKnowledge;
   host: string;
   port: number;
   /** Required on every API and WebSocket request. */
@@ -108,6 +111,13 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       const end = Number(url.searchParams.get('end') ?? start + 80);
       const src = engine.readSource(file, start, end);
       return src ? json(res, 200, src) : json(res, 404, { error: 'not an indexed source file' });
+    }
+    if (req.method === 'GET' && path === '/api/commits') {
+      const k = opts.knowledge;
+      if (!k) return json(res, 200, { summary: null, commits: [] });
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 50));
+      const commits = k.store.commits({ limit, component: url.searchParams.get('component') ?? undefined, agent: url.searchParams.get('agent') ?? undefined });
+      return json(res, 200, { summary: k.summary(), commits: commits.map((c) => commitView(k.store, c)) });
     }
     if (req.method === 'POST' && path === '/api/open') {
       const body = (await readBody(req)) as { file?: string; line?: number };

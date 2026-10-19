@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { GraphEngine } from '@eyrie/engine';
+import { ProjectKnowledge, type AiBackend } from '@eyrie/knowledge';
 import { startServer, type RunningServer } from './server.js';
 
 const DEFAULT_PORT = 4319;
@@ -20,11 +21,15 @@ export interface LaunchOptions {
   watch?: boolean;
   /** Ignore the facts cache and re-parse every file. */
   reset?: boolean;
+  /** Notes recorded commits with this backend in the background. Off when omitted. */
+  ai?: AiBackend | null;
   log?: (message: string) => void;
 }
 
 export interface RunningEyrie {
   engine: GraphEngine;
+  /** The project's recorded git history and notes on it (knowledge.db). */
+  knowledge: ProjectKnowledge;
   server: RunningServer;
   token: string;
   /** The UI address, token included. */
@@ -48,26 +53,56 @@ export async function launch(opts: LaunchOptions): Promise<RunningEyrie> {
   const engine = new GraphEngine({ root: opts.root, dataDir: opts.dataDir, watch: opts.watch ?? true, reset: opts.reset, log });
   engine.on('error', (err) => log(`error: ${err.message}`));
   await engine.start();
+  const knowledge = await openKnowledge(engine, { ai: opts.ai, watch: opts.watch ?? true, log });
 
   const token = opts.token ?? randomBytes(12).toString('base64url');
   const webDir = opts.webDir ?? defaultWebDir();
   let server: RunningServer;
   try {
-    server = await listen(opts.port, (port) => startServer({ engine, host, port, token, webDir, log }));
+    server = await listen(opts.port, (port) => startServer({ engine, knowledge, host, port, token, webDir, log }));
   } catch (err) {
+    await knowledge.close();
     await engine.stop();
     throw err;
   }
   return {
     engine,
+    knowledge,
     server,
     token,
     url: `${server.url}/?token=${encodeURIComponent(token)}`,
     close: async () => {
       await server.close();
+      await knowledge.close();
       await engine.stop();
     },
   };
+}
+
+/**
+ * Opens the project's knowledge.db next to its cache and records the commits it
+ * has not seen. Analysis, when an AI backend is set, runs in the background
+ * unless `waitForAnalysis`, and with `watch` both repeat whenever HEAD moves.
+ * A git failure is logged, never fatal.
+ */
+export async function openKnowledge(
+  engine: GraphEngine,
+  opts: { ai?: AiBackend | null; watch?: boolean; waitForAnalysis?: boolean; log?: (message: string) => void },
+): Promise<ProjectKnowledge> {
+  const log = opts.log ?? (() => {});
+  const knowledge = ProjectKnowledge.open({
+    root: engine.root,
+    dataDir: engine.dataDir,
+    architecture: () => engine.architecture,
+    project: () => ({ name: engine.repo.name, frameworks: engine.repo.frameworks }),
+    ai: opts.ai,
+    log,
+  });
+  await knowledge.record().catch((err: unknown) => log(`Could not read git history: ${(err as Error).message}`));
+  const analysis = knowledge.analyze();
+  if (opts.waitForAnalysis) await analysis;
+  if (opts.watch) knowledge.watch();
+  return knowledge;
 }
 
 /** Uses the requested port, or the first free port from 4319 when none was given. */

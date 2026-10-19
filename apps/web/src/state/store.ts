@@ -11,11 +11,11 @@ import {
   type RepoInfo,
   type ServerMessage,
 } from '@eyrie/core';
-import { SYSTEM_ID_PREFIX, systemIdOf } from '@eyrie/lens';
+import { SYSTEM_ID_PREFIX, systemIdOf, type FocusMode } from '@eyrie/lens';
 
 export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'unauthorized';
 export type Mark = 'new' | 'modified' | 'removed';
-export type FocusMode = 'neighbors' | 'downstream' | 'upstream';
+export type { FocusMode } from '@eyrie/lens';
 export type ViewMode = '2d' | '3d';
 /** Which question the map answers: how it is built, how data moves, what one request does, or what the system's parts are. */
 export type Lens = 'architecture' | 'dataflow' | 'sequence' | 'system';

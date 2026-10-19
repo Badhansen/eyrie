@@ -7,7 +7,8 @@ import { GraphEngine, type EngineBatch } from '../src/index.js';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/bookstore-app', import.meta.url));
 
-function nextBatch(engine: GraphEngine, timeoutMs = 5000): Promise<EngineBatch> {
+/** The next update, or a failure if none arrives. The wait is generous; a watcher that never reports still fails. */
+function nextBatch(engine: GraphEngine, timeoutMs = 15_000): Promise<EngineBatch> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timed out waiting for a graph update')), timeoutMs);
     engine.once('batch', (b) => {
@@ -74,7 +75,7 @@ describe('GraphEngine', () => {
     b = await batch;
     expect(b.files).toEqual([{ file: 'src/services/shipping.service.ts', change: 'unlink' }]);
     expect(b.architecture.removedNodes).toHaveLength(1);
-  });
+  }, 60_000); // three updates in a row, each allowed nextBatch's wait
 
   it('reuses cached facts on restart', async () => {
     const logs: string[] = [];

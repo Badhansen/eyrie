@@ -213,6 +213,12 @@ function ProjectRow({ project, api, now }: { project: ProjectView; api: DesktopP
               <Stat label="links" value={project.scan.links} />
             </dl>
             {project.scan.frameworks.length ? <p className="project-frameworks">{project.scan.frameworks.join(' · ')}</p> : null}
+            {project.scan.commits ? (
+              <p className="project-history" title={project.ai ? `Commits are noted by ${project.ai}` : 'Turn on Analyse Commits with Claude in the ⋯ menu for notes on each commit'}>
+                {plural(project.scan.commits, 'commit')}
+                {project.ai ? ` · ${(project.scan.analysed ?? 0).toLocaleString()} noted by ${project.ai}` : ''}
+              </p>
+            ) : null}
           </>
         ) : (
           <p className="project-never">{status === 'queued' ? 'Waiting to scan…' : status === 'scanning' ? 'Scanning for the first time…' : 'Not scanned yet'}</p>

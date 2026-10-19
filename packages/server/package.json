@@ -16,6 +16,8 @@
   "dependencies": {
     "@eyrie/core": "workspace:*",
     "@eyrie/engine": "workspace:*",
+    "@eyrie/knowledge": "workspace:*",
+    "@eyrie/lens": "workspace:*",
     "ws": "8.22.0"
   },
   "devDependencies": {
