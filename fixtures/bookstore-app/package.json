@@ -3,6 +3,7 @@
   "private": true,
   "description": "Fixture app used by Eyrie tests and demos. Never installed or run.",
   "dependencies": {
+    "@paddle/paddle-node-sdk": "^3.0.0",
     "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
     "@prisma/client": "^6.0.0",
     "algoliasearch": "^5.0.0",
