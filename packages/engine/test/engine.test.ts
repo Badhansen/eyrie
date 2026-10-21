@@ -40,7 +40,7 @@ describe('GraphEngine', () => {
     engine = new GraphEngine({ root: dir, dataDir, watch: false });
     await engine.start();
     expect(engine.repo.frameworks).toEqual(expect.arrayContaining(['next', 'prisma', 'react']));
-    expect(engine.stats.files).toBe(34);
+    expect(engine.stats.files).toBe(38);
     expect(engine.architecture.nodes.map((n) => n.label)).toEqual(expect.arrayContaining(['OrderService', 'Order Checkout API', 'OpenAI']));
   });
 
@@ -84,7 +84,7 @@ describe('GraphEngine', () => {
     await engine.stop();
     engine = new GraphEngine({ root: dir, dataDir, watch: false, log: (m) => logs.push(m) });
     await engine.start();
-    expect(logs[0]).toMatch(/0 parsed, 34 from cache/);
+    expect(logs[0]).toMatch(/0 parsed, 38 from cache/);
   });
 
   it('never serves files outside the index', async () => {

@@ -62,6 +62,6 @@ describe('server', () => {
     });
     ws.close();
     expect(msg.type).toBe('hello');
-    if (msg.type === 'hello') expect(msg.architecture.nodes.length).toBe(31);
+    if (msg.type === 'hello') expect(msg.architecture.nodes.length).toBe(36);
   });
 });

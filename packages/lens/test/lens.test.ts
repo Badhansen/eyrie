@@ -110,11 +110,12 @@ describe('lenses over the fixture app', () => {
         'transfer CatalogService -> Algolia',
         'transfer PaymentService -> Stripe',
         'transfer BackupPaymentService -> Lemon Squeezy',
+        'transfer PaddlePaymentService -> Paddle',
         'carry Order API -> OrderService',
       ]),
     );
     // Every network and SDK crossing is a transfer, not an in-process hand-off.
-    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(8);
+    expect(roles(flow).filter((r) => r.startsWith('transfer')).length).toBe(9);
     // The static home page and the middleware touch no data, so they drop out.
     const kept = new Set(flow.nodes.map((n) => n.label));
     expect(kept.has('Home Page')).toBe(false);
@@ -141,10 +142,19 @@ describe('lenses over the fixture app', () => {
       '2 Order API -> Auth Service',
       '3 Auth Service -> Customer',
       '2 Order API -> OrderService',
+      '3 OrderService -> PaymentRouterService',
+      '4 PaymentRouterService -> Payment Strategy',
       '3 OrderService -> PaymentService',
+      '4 PaymentService -> Payment Strategy',
       '4 PaymentService -> Stripe',
       '3 OrderService -> BackupPaymentService',
+      '4 BackupPaymentService -> Payment Strategy',
       '4 BackupPaymentService -> Lemon Squeezy',
+      '3 OrderService -> PaddlePaymentService',
+      '4 PaddlePaymentService -> Paddle',
+      '4 PaddlePaymentService -> Payment Strategy',
+      '3 OrderService -> StoreCreditPaymentService',
+      '4 StoreCreditPaymentService -> Payment Strategy',
       '3 OrderService -> OrderRepository',
       '4 OrderRepository -> Order',
       '4 OrderRepository -> OrderItem',
@@ -159,8 +169,16 @@ describe('lenses over the fixture app', () => {
     // The first lifeline is the entry point, and each appears once.
     expect(trace.participants[0]).toBe(entry.id);
     expect(new Set(trace.participants).size).toBe(trace.participants.length);
-    // Auth Service and OrderService were expanded under Order API already.
-    expect(trace.steps.filter((s) => s.collapsed).map((s) => label.get(s.to))).toEqual(['Auth Service', 'OrderService']);
+    // Payment Strategy is reached from every strategy, and Auth Service and OrderService
+    // were expanded under Order API already, so later arrivals collapse.
+    expect(trace.steps.filter((s) => s.collapsed).map((s) => label.get(s.to))).toEqual([
+      'Payment Strategy',
+      'Payment Strategy',
+      'Payment Strategy',
+      'Payment Strategy',
+      'Auth Service',
+      'OrderService',
+    ]);
   });
 });
 

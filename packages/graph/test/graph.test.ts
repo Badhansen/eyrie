@@ -12,7 +12,7 @@ describe('code graph: full build', () => {
   it('resolves calls through imports, instances, aliases and this-fields', () => {
     const edges = repo.edgeStrings();
     expect(edges).toContain('CALLS src/app/api/order/checkout/route.ts#POST -> src/services/order.service.ts#OrderService.checkout');
-    expect(edges).toContain('CALLS src/services/order.service.ts#OrderService.checkout -> src/services/payment.service.ts#PaymentService.charge');
+    expect(edges).toContain('CALLS src/services/order.service.ts#OrderService.checkout -> src/services/payment-router.service.ts#PaymentRouterService.charge');
     expect(edges).toContain('CALLS src/services/order.service.ts#OrderService.checkout -> src/repositories/order.repository.ts#OrderRepository.save');
     expect(edges).toContain('CALLS src/services/order.service.ts#OrderService.checkout -> src/lib/summary.ts#buildOrderSummary');
     expect(edges).toContain('CALLS src/app/api/order/[id]/route.ts#GET -> src/repositories/order.repository.ts#OrderRepository.findById');
@@ -103,7 +103,9 @@ describe('code graph: incremental updates', () => {
     expect(repo.edgeStrings()).not.toContain('USES src/services/payment.service.ts#PaymentService.charge -> external_service:Stripe');
 
     await repo.write(path, content);
-    expect(repo.edgeStrings()).toContain('CALLS src/services/order.service.ts#OrderService.checkout -> src/services/payment.service.ts#PaymentService.charge');
+    // OrderService reaches PaymentService by constructing it into its strategy array, so that
+    // reference is what has to come back; the router owns the .charge call itself.
+    expect(repo.edgeStrings()).toContain('CALLS src/services/order.service.ts#OrderService -> src/services/payment.service.ts#PaymentService');
   });
 
   it('flags calls to missing API routes and re-links them when the route appears', async () => {
