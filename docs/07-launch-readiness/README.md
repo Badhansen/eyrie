@@ -4,8 +4,8 @@
 | --- | --- |
 | Product | Eyrie — local-first live architecture map for codebases |
 | Owner / reviewer | Badhan Sen |
-| Status | **Hold** — not ready for public launch; 2 actions open (10, 11). Actions 1, 4, 6, 8, 12 and 15 closed 2026-10-10 |
-| Review date | 2026-10-08 |
+| Status | **Hold** — re-reviewed 2026-10-23 for the desktop installers and AI notes: action 10 open, and item 15's specialist confirmation still needed. Draft releases can be built and tested; publishing any binary waits for both. Actions 1, 4, 6, 8, 12 and 15 closed 2026-10-10; 11 closed 2026-10-23 |
+| Review date | 2026-10-08; re-reviewed 2026-10-23 |
 | Answers | Is this safe and honest to put in front of real users? |
 | Basis | A 20-point pre-launch review across policies, data and privacy, accessibility, claims and ownership, and third-party services |
 
@@ -28,10 +28,28 @@
 This matters more than any individual item below, because it determines which items apply at all:
 
 - **A source distribution of a locally-run tool.** The user clones the repo and runs it on their own machine against their own code.
+- **Desktop installers** for macOS, Windows and Linux (from v0.1.0), built from a tag by `.github/workflows/release.yml` and attached to a GitHub release. Not signed by Apple or Microsoft.
 - **No server we operate.** No accounts, no hosted instance, no database we hold, no payments.
-- **No personal data collected, and no network egress at all** — verified by inspection, see item 5.
+- **No personal data collected by the project, and no network egress by default** — verified by inspection, see item 5. AI notes on commits, off by default, send commit metadata to the user's own AI provider; see the [2026-10-23 re-review](#re-review-2026-10-23-desktop-installers-and-ai-notes).
 
 Most of these 20 points exist for a hosted commercial website. Eleven genuinely apply here; nine are not applicable today and are recorded with the reason and the trigger that would reactivate them.
+
+### Re-review 2026-10-23: desktop installers and AI notes
+
+Two changes since 2026-10-10 alter what is launched: Phase 5 added optional AI notes on commits, and the desktop app now ships as installers. Each item they touch was checked again against the code; the items below carry the result.
+
+| Item | Was | Now | Finding |
+| --- | --- | --- | --- |
+| 5. Personal data | Pass | Pass | New data, all local: commit authors' names and email addresses as git records them (`knowledge.db`), and the desktop app's project list and UI choices (`projects.json`, `prefs.json` in its user-data folder). No egress by default. With AI notes turned on for a project (off by default, per project, after a dialog that says what is sent and to whom), commit messages, author names, changed paths and component names go to Anthropic or OpenAI through the user's own CLI and account; never source code. The Windows installer (Squirrel) fetches Eyrie's icon from GitHub once, at install time. The app's window has spellcheck off, since Chromium would otherwise download dictionaries on Linux |
+| 6. Privacy notice | Pass | Pass | README *Privacy and security* states all of item 5, including the installer's fetch and the app's data files, and the README's *Install* section says where the data lives and how to remove it |
+| 10. Screen reader | Action needed | Action needed | Not yet done |
+| 11. Contrast | Action needed | **Pass** | 11a: `--color-faint` changed in 94fc547 (2026-10-09) and now measures 4.87–6.08:1 dark, 4.66–5.45:1 light on the four surfaces. 11b: the kind labels became the bare category colour in the React Flow redesign, and 7 of 8 failed in light mode; they now mix the colour 75% toward the text colour (1c29cae): lowest 4.87:1 computed, 4.91:1 measured in the browser. 11c (`px` → `rem`) stays a decision, not a blocker |
+| 13. Claims | Pass with one action | Pass with one action | "No network requests" is now scoped to AI notes being off, with the installer's fetch disclosed; "no AI in the pipeline" was replaced by the AI notes description; the *Tested on* table lists only what ran. "20–50 components" is still unevidenced |
+| 15. Rights | Pass (source) + specialist | Pass (source and binaries' notices) + specialist | Every desktop build carries Electron's `LICENSE` and Chromium's `LICENSES.chromium.html` (inside `Eyrie.app` on macOS). `THIRD-PARTY-NOTICES.md` adds Electron, Chromium, `electron-squirrel-startup` (Apache-2.0, with its text), `debug` and `ms`. Distributing binaries also means offering their exact source (AGPL-3.0 and GPL-3.0 §6): releases are built from the tag in CI, and the release notes point to the tag's source archive. Confirmation of the `elkjs` election is still open |
+| 16. Limits and AI | Pass | Pass | AI involvement is disclosed at the point of use (the opt-in dialog); notes are labelled with the model that wrote them and rejected unless they cite a file or component the commit touched; the README says AI never writes an edge. The desktop app's limits (unsigned, no automatic update, no MCP in the app) are in *Known limitations* |
+| 17. Tracking | Pass | Pass | Three first-party `localStorage` keys in a browser (`eyrie-theme`, `eyrie-view`, `eyrie-lens`); in the desktop app they are kept in `prefs.json` instead, because each map is served on a new port. Electron keeps Chromium's usual profile files in the user-data folder; Eyrie sets no cookies and loads nothing cross-origin |
+| 18. Consent | Not applicable | Not applicable | Nothing new needs consent; AI notes ask before anything is sent anyway |
+| 19. Providers | Pass | Pass | Eyrie still operates no service and holds no provider contract. With AI notes on, the user's own CLI sends the data under the user's own account and terms; Eyrie supplies no key or account. If it ever supplies one, this item needs a vendor register, a processing agreement, a transfer assessment and specialist review |
 
 ---
 
@@ -79,7 +97,7 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 5. Map the Personal Data You Handle
 
-- [x] Review completed. · **Status: Pass**
+- [x] Review completed. · **Status: Pass** (re-reviewed 2026-10-23: AI notes and the desktop app's data; see the re-review)
 
 **Finding — verified by inspection, not assumed.** No personal data is collected and nothing leaves the machine.
 
@@ -97,7 +115,7 @@ Most of these 20 points exist for a hosted commercial website. Eleven genuinely 
 
 ### 6. Publish an Accurate Privacy Notice
 
-- [x] Review completed. · **Status: Pass** (closed 2026-10-10)
+- [x] Review completed. · **Status: Pass** (closed 2026-10-10; re-reviewed 2026-10-23)
 
 **Finding.** There is no privacy notice. `README.md` has a "Privacy and security" section that accurately describes behaviour (local only, no network requests, bound to `127.0.0.1`, token required, source endpoint index-only, cache location). For a locally-run tool collecting nothing, that is close to proportionate — but it is framed as a feature list, not as a statement of what is and is not collected.
 
@@ -153,7 +171,7 @@ Three real gaps:
 
 ### 11. Check Readability, Contrast and Resizing
 
-- [ ] Review completed. · **Status: Action needed**
+- [x] Review completed. · **Status: Pass** (11a and 11b closed 2026-10-23; see the re-review for the current measurements)
 
 **Finding — measured, not estimated.** Contrast ratios computed from the actual token values in `apps/web/src/styles.css`, with `color-mix(in oklab, …)` resolved properly for mixed values.
 
@@ -204,7 +222,7 @@ Three real gaps:
 
 ### 13. Verify Marketing Claims
 
-- [x] Review completed. · **Status: Pass with one action**
+- [x] Review completed. · **Status: Pass with one action** (re-reviewed 2026-10-23)
 
 **Claims register** — every material claim in `README.md`, checked:
 
@@ -214,7 +232,7 @@ Three real gaps:
 | "The server binds to `127.0.0.1`, requires a random per-run access token, and rejects requests whose `Host` header is not local" | **Yes** — all three implemented in `packages/server/src/server.ts` |
 | "The source endpoint only serves files that are in the index. `.env` files, keys and anything ignored by git are never readable through it." | **Yes** — `/api/source` resolves against the index; scanning honours `.gitignore`/`.eyrieignore` |
 | "50+ SDKs (OpenAI, Anthropic, …)" | **Yes** — 73 provider keys in `packages/graph/src/externals.ts` |
-| "There is no AI in the pipeline today" | **Yes** — no model call anywhere |
+| "There is no AI in the pipeline today" | Replaced 2026-10-23 by the description of optional AI notes, which matches the code: off by default, per project, after a dialog |
 | "A typical app reduces to 20–50 components" | **Estimate, unevidenced.** Plausible and matches the fixture and smoke repo, but no measurement is recorded |
 | Known limitations section | **Accurate and unusually candid** — syntactic resolution, heuristic classification, sequence order ≠ runtime order, unjoined Express router prefixes, single-threaded parsing, TS/JS only |
 
@@ -232,7 +250,7 @@ No invented numbers, no unsupported guarantees, no certification claims, no comp
 
 ### 15. Confirm Rights to Content, Code and Branding
 
-- [x] Review completed. · **Status: Pass for source distribution** (closed 2026-10-10) · **Needs specialist review before binary distribution**
+- [x] Review completed. · **Status: Pass for source distribution** (closed 2026-10-10) **and for the binaries' notices** (2026-10-23) · **Specialist confirmation of the `elkjs` election needed before any binary is published**
 
 **Dependency licence inventory** (runtime and build, from the installed tree):
 
@@ -258,7 +276,7 @@ Three findings:
 
 ### 16. Explain Product Limits and AI Involvement
 
-- [x] Review completed. · **Status: Pass**
+- [x] Review completed. · **Status: Pass** (re-reviewed 2026-10-23: AI notes disclosed at the point of use)
 
 **Finding.** This is the project's strongest area. `README.md` carries an explicit "Known limitations" section covering every material limit: syntactic resolution (missed calls through DI and dynamic dispatch), heuristic classification tuned for Next.js/Node.js, the sequence view's ordering being source-line order rather than runtime order, unjoined Express router prefixes, single-threaded parsing, and TS/JS only. The "Code graph first, visualization second, AI third" principle is stated up front, along with the commitment that AI will annotate the graph and "never invent dependencies".
 
@@ -272,14 +290,14 @@ No professional expertise or human review is implied. There is no user-generated
 
 ### 17. Inventory Tracking and Embedded Services
 
-- [x] Review completed. · **Status: Pass**
+- [x] Review completed. · **Status: Pass** (re-reviewed 2026-10-23)
 
 **Tracking inventory — complete:**
 
 | Technology | Present? | Detail |
 | --- | --- | --- |
 | Cookies | No | None set |
-| `localStorage` | **Yes — two keys** | `eyrie-lens` (last lens) and `eyrie-view` (2D or 3D). First-party, functional UI preference, no identifier, no profiling |
+| `localStorage` | **Yes — three keys** | `eyrie-theme`, `eyrie-lens` (last lens) and `eyrie-view` (2D or 3D). First-party, functional UI preference, no identifier, no profiling. The desktop app keeps them in `prefs.json` instead |
 | `sessionStorage` / IndexedDB | No | — |
 | Analytics / pixels / ad tags | No | None |
 | Chat widgets, video embeds, iframes | No | None |
@@ -292,13 +310,13 @@ Observed network behaviour is first-party only: `/api/*` over HTTP and one WebSo
 
 - [x] Review completed. · **Status: Not applicable**
 
-**Why not applicable.** There is nothing in the inventory that triggers consent or opt-out duties. The two `localStorage` keys are first-party functional storage holding a UI preference the user set themselves, in a tool they run locally; there is no third party, no identifier, no tracking and no cross-site anything. No analytics exists to classify, and there is no public site on which a banner would appear.
+**Why not applicable.** There is nothing in the inventory that triggers consent or opt-out duties. The three `localStorage` keys are first-party functional storage holding a UI preference the user set themselves, in a tool they run locally; there is no third party, no identifier, no tracking and no cross-site anything. No analytics exists to classify, and there is no public site on which a banner would appear.
 
 **Reactivates if:** any analytics, crash reporting, update check or marketing site is added — at which point the classification must be done properly per jurisdiction rather than assumed, and prior consent blocking implemented where required.
 
 ### 19. Review Providers, Contracts and Transfers
 
-- [x] Review completed. · **Status: Pass**
+- [x] Review completed. · **Status: Pass** (re-reviewed 2026-10-23: AI notes go through the user's own CLI and account)
 
 **Finding.** **No runtime providers at all.** There is no hosting provider, database provider, email provider, payment provider, analytics provider or AI provider, because there is no server and no network egress. Consequently there are no processing agreements to put in place, no subprocessors to assess, no cross-border transfer assessment to make, and no administrative accounts holding user data.
 
@@ -324,28 +342,32 @@ Developer-time dependencies only, touching no user data: the npm registry (insta
 | 2 | Not applicable | No service offered; AGPL `LICENSE` governs use | None — revisit if hosted or paid | Badhan Sen | On scope change |
 | 3 | Not applicable | Nothing is sold | None | Badhan Sen | On scope change |
 | 4 | **Pass** | Issues with templates; `SECURITY.md`; `CONTRIBUTING.md` | Done 2026-10-10 | Badhan Sen | — |
-| 5 | **Pass** | No personal data; zero network egress verified by inspection | Re-verify at Phase 5 | Badhan Sen | At Phase 5 |
+| 5 | **Pass** | Local data only; no egress by default; AI notes opt-in and disclosed; installer's icon fetch disclosed | Re-verified 2026-10-23 | Badhan Sen | — |
 | 6 | **Pass** | Explicit no-collection statement in `README.md` | Done 2026-10-10 | Badhan Sen | — |
 | 7 | **Pass** | Retention/deletion specified in Backend Schema §9; cache disposable | None | Badhan Sen | — |
 | 8 | **Pass** | `SECURITY.md` with private route, response times and scope | Done 2026-10-10 | Badhan Sen | — |
 | 9 | Pass w/ follow-up | Full keyboard parity; nodes focusable with Enter/Space; focus ring 8.00:1 / 4.30:1 | Check 3D keyboard trap and focus order after live update | Badhan Sen | Next UI change |
 | 10 | Action needed | Good roles and names, but never tested with a screen reader; relationships visual only | Run VoiceOver + NVDA; decide on `role="application"` | Badhan Sen | Before public launch |
-| 11 | Action needed | `--color-faint` 2.89–3.61:1 as 9.5–10px text; light `api` kind 4.46:1 | Fix both tokens; decide on `px` → `rem` | Badhan Sen | Before public launch |
+| 11 | **Pass** | `--color-faint` 4.66–6.08:1; kind labels 4.87:1 at worst | Done 2026-10-23; `px` → `rem` still a decision | Badhan Sen | — |
 | 12 | Pass | Minimal form surface, labelled; reduced motion honoured in CSS **and** JS; issues route published | None | Badhan Sen | — |
 | 13 | Pass w/ action | Every security and privacy claim verified; "20–50 components" unevidenced | Measure or soften that one claim | Badhan Sen | Before public launch |
 | 14 | Not applicable | No reviews, testimonials or endorsements | None | Badhan Sen | On scope change |
-| 15 | **Pass** (source) + specialist | `THIRD-PARTY-NOTICES.md` added and shipped in the UI build; `elkjs` GPL election stated | Adviser to confirm the `elkjs` election before binary distribution | Badhan Sen | Before Phase D |
-| 16 | **Pass** | Known limitations explicit and candid; no AI today; no UGC | Update disclosures at Phase 5 | Badhan Sen | At Phase 5 |
-| 17 | **Pass** | Two first-party functional `localStorage` keys; nothing else | None | Badhan Sen | On any new dependency |
+| 15 | **Pass** (source and binaries' notices) + specialist | Notices cover Electron, Chromium and the desktop app's bundled packages, and ship in every build; `elkjs` GPL election stated | Adviser to confirm the `elkjs` election before any binary is published | Badhan Sen | Before publishing a release |
+| 16 | **Pass** | Known limitations explicit and candid, desktop limits included; AI notes disclosed at the point of use; no UGC | Re-verified 2026-10-23 | Badhan Sen | — |
+| 17 | **Pass** | Three first-party functional `localStorage` keys (`prefs.json` in the desktop app); nothing else | None | Badhan Sen | On any new dependency |
 | 18 | Not applicable | Nothing present that requires consent or opt-out | None | Badhan Sen | On scope change |
-| 19 | **Pass** | No runtime providers; no transfers; no processing agreements needed | Revisit at Phase 5 | Badhan Sen | At Phase 5 |
+| 19 | **Pass** | No provider of Eyrie's; AI notes use the user's own CLI and account | Re-verified 2026-10-23; revisit if Eyrie ever supplies a key or account | Badhan Sen | — |
 | 20 | Not applicable | No marketing messages or contact collection | None | Badhan Sen | On scope change |
+
+**Totals (2026-10-23):** 14 Pass (incl. 2 with follow-up actions, and item 15 awaiting specialist confirmation before any binary is published) · 1 Action needed (10) · 5 Not applicable.
 
 **Totals (2026-10-10):** 13 Pass (incl. 2 with follow-up actions, and item 15 pending specialist review before binary distribution) · 2 Action needed (10, 11) · 5 Not applicable, each with a stated reason and reactivation trigger.
 
 ## Launch Decision Record
 
-**Decision: Hold.**
+**Re-review 2026-10-23: Hold.** The desktop installers can be built, attached to a *draft* release and tested on clean machines, which is private to the repository's collaborators. Publishing any binary, a pre-release included, waits for two things: one screen-reader pass with its findings recorded (item 10), and confirmation of the `elkjs` licence election (item 15). Items 9's follow-ups, 11c and 13 do not block. Owner: Badhan Sen.
+
+**2026-10-08 decision: Hold.**
 
 Not because anything here is dangerous — the privacy and security posture is genuinely strong, and better than most tools of this kind — but because a public launch would currently ship text that fails AA contrast at the smallest sizes, and a UI that has never been tried with a screen reader. The operator, support, security-reporting, privacy-statement and licence-notice gaps found on 2026-10-08 were closed on 2026-10-10.
 
@@ -376,4 +398,5 @@ Not because anything here is dangerous — the privacy and security posture is g
 - [x] Dependency licences inventoried; conflicts identified.
 - [x] Review log and launch decision recorded, with actions assigned and sequenced.
 - [x] Actions 1, 4, 6, 8, 12 and 15 (action half) closed 2026-10-10.
-- [ ] Actions 10, 11 and 13 outstanding; 15 awaits specialist review before binary distribution.
+- [x] Re-reviewed 2026-10-23 for the desktop installers and AI notes; action 11 closed.
+- [ ] Action 10 outstanding; 15 awaits specialist confirmation before any binary is published; 13 open, not blocking.
