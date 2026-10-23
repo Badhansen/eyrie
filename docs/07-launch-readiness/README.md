@@ -4,7 +4,7 @@
 | --- | --- |
 | Product | Eyrie — local-first live architecture map for codebases |
 | Owner / reviewer | Badhan Sen |
-| Status | **Hold** — re-reviewed 2026-10-23 for the desktop installers and AI notes: action 10 open, and item 15's specialist confirmation still needed. Draft releases can be built and tested; publishing any binary waits for both. Actions 1, 4, 6, 8, 12 and 15 closed 2026-10-10; 11 closed 2026-10-23 |
+| Status | **Hold** — re-reviewed 2026-10-23 for the desktop installers and AI notes: action 10 open, and item 15's specialist confirmation still needed. Draft releases can be built and tested; publishing a final release waits for both. `v0.1.0-rc.1` was published as a pre-release for testers by the owner's decision (see the Decision Record). Actions 1, 4, 6, 8, 12 and 15 closed 2026-10-10; 11 closed 2026-10-23 |
 | Review date | 2026-10-08; re-reviewed 2026-10-23 |
 | Answers | Is this safe and honest to put in front of real users? |
 | Basis | A 20-point pre-launch review across policies, data and privacy, accessibility, claims and ownership, and third-party services |
@@ -366,6 +366,8 @@ Developer-time dependencies only, touching no user data: the npm registry (insta
 ## Launch Decision Record
 
 **Re-review 2026-10-23: Hold.** The desktop installers can be built, attached to a *draft* release and tested on clean machines, which is private to the repository's collaborators. Publishing any binary, a pre-release included, waits for two things: one screen-reader pass with its findings recorded (item 10), and confirmation of the `elkjs` licence election (item 15). Items 9's follow-ups, 11c and 13 do not block. Owner: Badhan Sen.
+
+**2026-10-23, owner's decision:** `v0.1.0-rc.1` was published as a GitHub pre-release, for testers, with items 10 and 15 still open. Its notes say the builds are unsigned and a pre-release, and list two packaging issues fixed in the next one. The final `v0.1.0` still waits for items 10 and 15.
 
 **2026-10-08 decision: Hold.**
 
