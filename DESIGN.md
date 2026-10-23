@@ -140,6 +140,8 @@ The palette pairs graphite or cool-paper neutrals with a distinct semantic colou
 ### Named Rules
 **The One Hue, One Meaning Rule.** A category colour is never decorative or reassigned to another category. Define every new colour in both schemes and derive state tints with `color-mix(in oklab, ...)` where possible.
 
+**The Readable Category Text Rule.** A category colour used as text, such as a node's kind label, is `color-mix(in oklab, var(--c) 75%, var(--color-text))`, never the bare colour: bare, most light-scheme categories fall below 4.5:1 at 10px. Borders, swatches and outlines keep the bare colour.
+
 **The Meaning Has Two Channels Rule.** Never communicate a change or edge type with colour alone. Change state also has a `+`, `~`, or `−` badge; edge kinds use line patterns as well as colour.
 
 ## Typography

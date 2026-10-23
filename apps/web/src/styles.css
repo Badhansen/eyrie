@@ -299,7 +299,9 @@ button:disabled {
 .flow-node.is-dim { opacity: 0.3; }
 .flow-node.is-faded { opacity: 0.55; }
 .flow-node.is-broken { border-style: dashed; }
-.flow-node-meta { display: flex; align-items: center; gap: 5px; height: 14px; color: var(--c); font: 10px var(--font-mono); white-space: nowrap; }
+/* A category colour used as text is mixed a quarter of the way toward the text colour: as it is,
+   most light-theme categories fall below 4.5:1 at this size (docs/07 §11). */
+.flow-node-meta { display: flex; align-items: center; gap: 5px; height: 14px; color: color-mix(in oklab, var(--c) 75%, var(--color-text)); font: 10px var(--font-mono); white-space: nowrap; }
 .flow-node-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); font-size: 14px; line-height: 20px; font-weight: 650; }
 .flow-node-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-dim); font: 10px/15px var(--font-mono); }
 .flow-change { display: grid; place-items: center; width: 16px; height: 16px; margin-left: auto; border-radius: 3px; font-size: 12px; background: var(--color-ink-0); }
@@ -453,7 +455,7 @@ button:disabled {
 .sequence-participant { position: relative; width: 180px; pointer-events: none; }
 .sequence-participant-title { display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 180px; height: 52px; padding: 8px 12px; border: 1px solid var(--color-rule-strong); border-radius: 4px; background: var(--color-ink-1); text-align: left; cursor: pointer; pointer-events: auto; }
 .sequence-participant-title strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
-.sequence-participant-title span { color: var(--c); font: 10px var(--font-mono); }
+.sequence-participant-title span { color: color-mix(in oklab, var(--c) 75%, var(--color-text)); font: 10px var(--font-mono); }
 .sequence-participant-title:hover, .sequence-participant.is-active .sequence-participant-title { border-color: var(--c); background: var(--color-ink-2); }
 .sequence-lifeline { position: absolute; top: 52px; bottom: 0; left: 50%; border-left: 1px dashed var(--color-rule-strong); }
 .sequence-participant.is-active .sequence-lifeline { border-left-style: solid; border-left-color: var(--c); }
