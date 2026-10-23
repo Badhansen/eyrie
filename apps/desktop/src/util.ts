@@ -1,26 +1,6 @@
 /** Helpers for the main process that need nothing from Electron, so they can be tested in Node. */
 import { existsSync, statSync } from 'node:fs';
-import { basename, delimiter, isAbsolute, join, resolve, sep } from 'node:path';
-
-/** The editors the CLI's "Open in editor" tries, in the same order (packages/server/src/server.ts). */
-const EDITORS: { cmd: string; name: string }[] = [
-  { cmd: 'cursor', name: 'Cursor' },
-  { cmd: 'code', name: 'VS Code' },
-  { cmd: 'windsurf', name: 'Windsurf' },
-  { cmd: 'zed', name: 'Zed' },
-];
-
-/** Whether `cmd` is an absolute path that exists, or a program in one of `path`'s folders. */
-export function onPath(cmd: string, path: string): boolean {
-  if (isAbsolute(cmd)) return existsSync(cmd);
-  return path.split(delimiter).some((dir) => dir && existsSync(join(dir, cmd)));
-}
-
-/** The editor to open a project folder with: `configured` (EYRIE_EDITOR) when set, else the first known editor on `path`. */
-export function findEditor(path: string, configured?: string): { cmd: string; name: string } | undefined {
-  const candidates = configured ? [{ cmd: configured, name: basename(configured) }] : EDITORS;
-  return candidates.find((editor) => onPath(editor.cmd, path));
-}
+import { resolve } from 'node:path';
 
 /**
  * The first folder passed on the command line, e.g.
@@ -45,9 +25,9 @@ export function statusPage(text: string): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
-/** Writes a path inside `home` as `~/…`, the way a terminal shows it. */
-export function tildify(path: string, home: string): string {
-  if (!home) return path;
+/** Writes a path inside `home` as `~/…`, the way a terminal shows it. Windows shows no `~`, so its paths stay whole. */
+export function tildify(path: string, home: string, platform: NodeJS.Platform = process.platform): string {
+  if (!home || platform === 'win32') return path;
   if (path === home) return '~';
-  return path.startsWith(home + sep) ? `~${path.slice(home.length)}` : path;
+  return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 }

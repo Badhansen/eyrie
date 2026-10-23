@@ -1,9 +1,9 @@
-import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { delimiter, extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep, win32 } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { GraphEvent, ServerMessage } from '@eyrie/core';
+import { findCommand, findEditor, startDetached } from '@eyrie/core/commands';
 import type { EngineBatch, GraphEngine } from '@eyrie/engine';
 import { commitView, type ProjectKnowledge } from '@eyrie/knowledge';
 
@@ -137,7 +137,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     }
     const target = normalize(join(webDir, decodeURIComponent(pathname)));
-    const file = target.startsWith(webDir) && existsSync(target) && statSync(target).isFile() ? target : join(webDir, 'index.html');
+    const file = target.startsWith(webDir + sep) && existsSync(target) && statSync(target).isFile() ? target : join(webDir, 'index.html');
     const immutable = file.includes(`${join(webDir, 'assets')}`);
     res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache' });
     res.end(readFileSync(file));
@@ -199,22 +199,18 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   };
 }
 
-function onPath(cmd: string): boolean {
-  return (process.env.PATH ?? '').split(delimiter).some((dir) => dir && existsSync(join(dir, cmd)));
-}
-
-/** Opens a file at a line in the user's editor. Never uses a shell. */
+/**
+ * Opens a file at a line in the user's editor, else in the system's default app for it, or
+ * Notepad on Windows, where `.ts` files belong to a video player. No shell runs, except cmd.exe
+ * for an editor installed as a Windows `.cmd` file, with every argument escaped for it.
+ */
 export function openInEditor(abs: string, line: number): boolean {
-  const configured = process.env.EYRIE_EDITOR;
-  const editors = configured ? [configured] : ['cursor', 'code', 'windsurf', 'zed'];
-  for (const cmd of editors) {
-    if (!onPath(cmd)) continue;
-    const args = cmd === 'zed' ? [`${abs}:${line}`] : ['-g', `${abs}:${line}`];
-    spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
-    return true;
+  const path = process.env.PATH ?? '';
+  const editor = findEditor(path, process.env.EYRIE_EDITOR);
+  if (editor) {
+    const zed = /^zed(\.exe)?$/i.test(win32.basename(editor.file));
+    return startDetached(editor.file, zed ? [`${abs}:${line}`] : ['-g', `${abs}:${line}`]);
   }
-  const fallback = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? null : 'xdg-open';
-  if (!fallback || !onPath(fallback)) return false;
-  spawn(fallback, [abs], { detached: true, stdio: 'ignore' }).unref();
-  return true;
+  const fallback = findCommand(process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'notepad' : 'xdg-open', path);
+  return !!fallback && startDetached(fallback, [abs]);
 }

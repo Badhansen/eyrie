@@ -1,16 +1,32 @@
+import { copyFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerDeb } from '@electron-forge/maker-deb';
+import { MakerDMG } from '@electron-forge/maker-dmg';
+import { MakerRpm } from '@electron-forge/maker-rpm';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
+// The Linux packages are named eyrie-desktop, and so is the command they install
+// (/usr/bin/eyrie-desktop), so that plain `eyrie` stays free for the command-line tool.
+const linux = {
+  name: 'eyrie-desktop',
+  productName: 'Eyrie',
+  genericName: 'Architecture map',
+  homepage: 'https://github.com/Badhansen/eyrie',
+  categories: ['Development' as const],
+  icon: 'assets/icon.png',
+};
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'Eyrie',
     executableName: 'eyrie',
     appBundleId: 'io.github.badhansen.eyrie',
+    appCategoryType: 'public.app-category.developer-tools',
     asar: true,
     // assets/icon.icns on macOS, assets/icon.ico on Windows; `pnpm icons` renders them from assets/icon.svg.
     icon: 'assets/icon',
@@ -18,9 +34,39 @@ const config: ForgeConfig = {
     // `pnpm resources` (scripts/prepare-resources.ts) fills these folders, and copies the
     // icon the window shows on Linux.
     extraResource: ['resources/web', 'resources/grammars', 'resources/icon.png'],
+    // Not notarized, so signed ad hoc: without it the bundle keeps Electron's own signature,
+    // which packaging breaks, and macOS calls a downloaded copy damaged. With it, the first
+    // launch is the usual System Settings → Privacy & Security → Open Anyway. Hardened
+    // runtime and timestamps only matter for notarization.
+    osxSign: {
+      identity: '-',
+      identityValidation: false,
+      preAutoEntitlements: false,
+      optionsForFile: () => ({ hardenedRuntime: false, timestamp: 'none' }),
+    },
   },
   rebuildConfig: {},
-  makers: [new MakerZIP({}, ['darwin']), new MakerSquirrel({ setupIcon: 'assets/icon.ico' }), new MakerDeb({ options: { icon: 'assets/icon.png' } })],
+  makers: [
+    new MakerDMG({ icon: 'assets/icon.icns' }),
+    // The ZIP is what macOS auto-update would read, should Eyrie get it.
+    new MakerZIP({}, ['darwin']),
+    // `name` defaults to package.json's, and a scoped name (@eyrie/desktop) is not a valid NuGet id.
+    // Squirrel shows iconUrl in Installed apps, and fetches it there and then.
+    new MakerSquirrel({ name: 'eyrie', setupIcon: 'assets/icon.ico', iconUrl: 'https://raw.githubusercontent.com/Badhansen/eyrie/main/apps/desktop/assets/icon.ico' }),
+    new MakerDeb({ options: { ...linux, section: 'devel', maintainer: 'Badhan Sen <37157382+Badhansen@users.noreply.github.com>' } }),
+    new MakerRpm({ options: { ...linux, license: 'AGPL-3.0-only' } }),
+  ],
+  hooks: {
+    // Windows and Linux builds keep Electron's LICENSE and Chromium's LICENSES.chromium.html next to
+    // the executable. On macOS they sit outside Eyrie.app, which is all the DMG and ZIP carry, so
+    // they are copied into its Resources before it is signed.
+    packageAfterExtract: async (_config, buildPath, _electronVersion, platform) => {
+      if (platform !== 'darwin') return;
+      const bundle = readdirSync(buildPath).find((name) => name.endsWith('.app'));
+      if (!bundle) throw new Error(`No .app in ${buildPath}`);
+      for (const file of ['LICENSE', 'LICENSES.chromium.html']) copyFileSync(join(buildPath, file), join(buildPath, bundle, 'Contents', 'Resources', file));
+    },
+  },
   plugins: [
     new VitePlugin({
       build: [

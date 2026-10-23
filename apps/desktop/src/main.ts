@@ -9,7 +9,7 @@
  * meanwhile, each in a utility process of its own. Closing the window stops
  * everything and quits.
  */
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, normalize, sep } from 'node:path';
@@ -31,10 +31,11 @@ import {
   type UtilityProcess,
 } from 'electron';
 import started from 'electron-squirrel-startup';
+import { findCommand, findEditor, startDetached } from '@eyrie/core/commands';
 import { Channel, type AddResult, type ProjectView } from './bridge.js';
 import { ProjectStore, isDirectory } from './projects.js';
 import type { FromHost, ToHost } from './protocol.js';
-import { findEditor, onPath, projectFromArgs, statusPage, tildify } from './util.js';
+import { projectFromArgs, statusPage, tildify } from './util.js';
 
 // Squirrel.Windows runs the app while installing and uninstalling, to create and remove shortcuts.
 if (started) app.quit();
@@ -368,7 +369,7 @@ const REVEAL_LABEL = process.platform === 'darwin' ? 'Show in Finder' : process.
 function openInEditor(root: string): void {
   const PATH = shellPath() ?? '';
   const editor = findEditor(PATH, process.env.EYRIE_EDITOR);
-  if (editor) spawn(editor.cmd, [root], { detached: true, stdio: 'ignore', env: { ...process.env, PATH } }).unref();
+  if (editor && !startDetached(editor.file, [root], { ...process.env, PATH })) dialog.showErrorBox(`Could not start ${editor.name}`, editor.file);
 }
 
 /** The AI backends a project's commits can be noted by, with what the user is told before turning one on. */
@@ -377,7 +378,10 @@ const AI_CHOICES = [
     backend: 'claude',
     name: 'Claude',
     command: 'claude',
-    install: 'Commit analysis runs your Claude Code CLI. Install it and sign in by running `claude` once in a terminal, then try again.',
+    install:
+      process.platform === 'win32'
+        ? 'Commit analysis runs your Claude Code CLI, claude.exe. Install it with Anthropic\'s native installer and sign in by running `claude` once in a terminal, then try again. The npm package installs claude.cmd instead, which Eyrie cannot pass its instructions to.'
+        : 'Commit analysis runs your Claude Code CLI. Install it and sign in by running `claude` once in a terminal, then try again.',
     sends: 'Claude Code sends this to Anthropic under your account and usage.',
   },
   {
@@ -408,7 +412,8 @@ async function toggleAi(id: string, choice: AiChoice): Promise<void> {
     notify();
     return;
   }
-  if (!onPath(choice.command, shellPath() ?? '')) {
+  // On Windows only claude.exe will do: Eyrie's instructions span several lines, and cmd.exe cannot pass those to claude.cmd.
+  if (!findCommand(choice.command, shellPath() ?? '', process.platform === 'win32' ? { extensions: ['.exe', '.com'] } : {})) {
     dialog.showErrorBox(`${choice.name} is not installed`, choice.install);
     return;
   }
