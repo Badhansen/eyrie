@@ -33,6 +33,7 @@ import {
 import started from 'electron-squirrel-startup';
 import { findCommand, findEditor, startDetached } from '@eyrie/core/commands';
 import { Channel, type AddResult, type ProjectView } from './bridge.js';
+import { PrefStore } from './prefs.js';
 import { ProjectStore, isDirectory } from './projects.js';
 import type { FromHost, ToHost } from './protocol.js';
 import { projectFromArgs, statusPage, tildify } from './util.js';
@@ -50,6 +51,7 @@ const MAX_SCANS = 2;
 
 let window: BrowserWindow | null = null;
 let store: ProjectStore;
+let prefs: PrefStore;
 
 /** The open project. Its engine serves the UI at `url` once it has indexed. */
 let live: { id: string; host: UtilityProcess; since: number; url?: string } | null = null;
@@ -546,6 +548,14 @@ function registerIpc(): void {
   ipcMain.on(Channel.show, (event) => {
     if (event.sender === window?.webContents) showProjects();
   });
+  // Every page of the window may read and save the UI's choices; the store keeps only the keys the UI uses.
+  // A synchronous message must always get a returnValue, or the page waits for ever.
+  ipcMain.on(Channel.prefs, (event) => {
+    event.returnValue = event.sender === window?.webContents ? prefs.all() : {};
+  });
+  ipcMain.on(Channel.setPref, (event, key: unknown, value: unknown) => {
+    if (event.sender === window?.webContents) prefs.set(key, value);
+  });
 }
 
 // ── lifecycle ────────────────────────────────────────────────────────────
@@ -569,6 +579,7 @@ void app.whenReady().then(async () => {
   // Unpackaged, the Dock would show Electron's icon.
   if (!app.isPackaged) app.dock?.setIcon(join(resourcesDir(), 'icon.png'));
   store = new ProjectStore(join(app.getPath('userData'), 'projects.json'));
+  prefs = new PrefStore(join(app.getPath('userData'), 'prefs.json'));
   protocol.handle('eyrie', serveApp);
   registerIpc();
   Menu.setApplicationMenu(buildMenu());

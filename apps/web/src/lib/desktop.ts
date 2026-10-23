@@ -1,7 +1,7 @@
 /**
  * The desktop app's bridge, exposed as `window.eyrieDesktop` by
  * apps/desktop/src/preload.ts. It is absent in a browser. Every page gets
- * `showProjects`; only the Projects page gets `projects`.
+ * `showProjects` and `prefs`; only the Projects page gets `projects`.
  * Mirrors apps/desktop/src/bridge.ts and projects.ts; keep the two in step.
  */
 
@@ -66,9 +66,18 @@ export interface DesktopProjects {
   onChange(listener: (projects: ProjectView[]) => void): () => void;
 }
 
+/** The UI's saved choices, kept by the app (see state/prefs.ts). */
+export interface DesktopPrefs {
+  get(key: string): string | null;
+  /** Saves a choice, or forgets it when `value` is null. */
+  set(key: string, value: string | null): void;
+}
+
 export interface DesktopBridge {
   platform: string;
   showProjects(): void;
+  /** Absent in a build of the app from before it kept them. */
+  prefs?: DesktopPrefs;
   projects?: DesktopProjects;
 }
 

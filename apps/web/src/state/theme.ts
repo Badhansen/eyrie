@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { readPref, writePref } from './prefs';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -11,13 +12,8 @@ function getSystemTheme(): 'light' | 'dark' {
 }
 
 function savedPreference(): ThemePreference {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === 'light' || v === 'dark') return v;
-  } catch {
-    /* storage unavailable */
-  }
-  return 'system';
+  const v = readPref(STORAGE_KEY);
+  return v === 'light' || v === 'dark' ? v : 'system';
 }
 
 /** Apply the resolved theme to the document so CSS and Three.js pick it up. */
@@ -52,12 +48,7 @@ class ThemeStore {
 
   set = (pref: ThemePreference): void => {
     this.preference = pref;
-    try {
-      if (pref === 'system') localStorage.removeItem(STORAGE_KEY);
-      else localStorage.setItem(STORAGE_KEY, pref);
-    } catch {
-      /* storage unavailable */
-    }
+    writePref(STORAGE_KEY, pref === 'system' ? null : pref);
     applyTheme(pref);
     this.emit();
   };

@@ -12,6 +12,7 @@ import {
   type ServerMessage,
 } from '@eyrie/core';
 import { SYSTEM_ID_PREFIX, systemIdOf, type FocusMode } from '@eyrie/lens';
+import { readPref, writePref } from './prefs';
 
 export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'unauthorized';
 export type Mark = 'new' | 'modified' | 'removed';
@@ -22,22 +23,15 @@ export type Lens = 'architecture' | 'dataflow' | 'sequence' | 'system';
 
 const VIEW_KEY = 'eyrie-view';
 const LENS_KEY = 'eyrie-lens';
+/** The view the user last chose; the flat 2D map until they pick 3D. */
 function savedView(): ViewMode {
-  try {
-    return localStorage.getItem(VIEW_KEY) === '2d' ? '2d' : '3d';
-  } catch {
-    return '3d';
-  }
+  return readPref(VIEW_KEY) === '3d' ? '3d' : '2d';
 }
 const LENSES: readonly Lens[] = ['system', 'architecture', 'dataflow', 'sequence'];
 /** The lens the user last chose; a first visit starts at the System view and zooms in from there. */
 function savedLens(): Lens {
-  try {
-    const v = localStorage.getItem(LENS_KEY);
-    return LENSES.find((l) => l === v) ?? 'system';
-  } catch {
-    return 'system';
-  }
+  const v = readPref(LENS_KEY);
+  return LENSES.find((l) => l === v) ?? 'system';
 }
 
 /** One save (or burst of saves) as it appears on the change tape. */
@@ -136,19 +130,11 @@ class Store {
   };
   setFocus = (focus: FocusMode) => this.set({ focus });
   setView = (view: ViewMode) => {
-    try {
-      localStorage.setItem(VIEW_KEY, view);
-    } catch {
-      /* the choice just won't be remembered */
-    }
+    writePref(VIEW_KEY, view);
     this.set({ view });
   };
   setLens = (lens: Lens) => {
-    try {
-      localStorage.setItem(LENS_KEY, lens);
-    } catch {
-      /* the choice just won't be remembered */
-    }
+    writePref(LENS_KEY, lens);
     const patch: Partial<State> = { lens, graphVersion: this.state.graphVersion + 1 };
     // Switching to the sequence view traces the selection, when a request can start there.
     const selected = this.state.selected;
