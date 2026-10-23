@@ -1,4 +1,4 @@
-import { copyFileSync, readdirSync } from 'node:fs';
+import { copyFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerDeb } from '@electron-forge/maker-deb';
@@ -9,6 +9,10 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+
+// A pre-release (0.1.0-rc.2) must sort before its release (0.1.0) for apt and dnf to upgrade from it.
+// The .deb maker writes 0.1.0~rc.2 itself; the .rpm maker would write 0.1.0.rc.2, which sorts after.
+const version: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
 
 // The Linux packages are named eyrie-desktop, and so is the command they install
 // (/usr/bin/eyrie-desktop), so that plain `eyrie` stays free for the command-line tool.
@@ -56,7 +60,7 @@ const config: ForgeConfig = {
     // Squirrel shows iconUrl in Installed apps, and fetches it there and then.
     new MakerSquirrel({ name: 'eyrie', setupIcon: 'assets/icon.ico', iconUrl: 'https://raw.githubusercontent.com/eyrie-hq/eyrie/main/apps/desktop/assets/icon.ico' }),
     new MakerDeb({ options: { ...linux, section: 'devel', maintainer: 'Badhan Sen <37157382+Badhansen@users.noreply.github.com>' } }),
-    new MakerRpm({ options: { ...linux, license: 'AGPL-3.0-only' } }),
+    new MakerRpm({ options: { ...linux, license: 'AGPL-3.0-only', version: version.replace('-', '~') } }),
   ],
   hooks: {
     // Windows and Linux builds keep Electron's LICENSE and Chromium's LICENSES.chromium.html next to

@@ -97,6 +97,14 @@ jobs:
         run: |
           dpkg-deb --info apps/desktop/out/make/deb/${{ matrix.arch }}/*.deb
           rpm -qpi apps/desktop/out/make/rpm/${{ matrix.arch }}/*.rpm
+          # A pre-release must sort before its release: 0.1.0~rc.2, not 0.1.0.rc.2, in both packages.
+          expected=$(node -p "require('./apps/desktop/package.json').version.replace('-', '~')")
+          deb=$(dpkg-deb -f apps/desktop/out/make/deb/${{ matrix.arch }}/*.deb Version)
+          rpm=$(rpm -qp --queryformat '%{VERSION}' apps/desktop/out/make/rpm/${{ matrix.arch }}/*.rpm)
+          if [ "$deb" != "$expected" ] || [ "$rpm" != "$expected" ]; then
+            echo "::error::Package versions are deb $deb and rpm $rpm; both should be $expected"
+            exit 1
+          fi
           sudo apt-get install -y ./apps/desktop/out/make/deb/${{ matrix.arch }}/*.deb
           xvfb-run -a pnpm --filter @eyrie/desktop smoke /usr/bin/eyrie-desktop
 
@@ -105,7 +113,9 @@ jobs:
           version=$(node -p "require('./apps/desktop/package.json').version")
           mkdir dist
           cd apps/desktop/out/make
-          find . -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} "$GITHUB_WORKSPACE/dist/" \;
+          # GitHub turns `~` in an asset's name into `.`, so name them that way here, and SHA256SUMS lists what is downloaded.
+          find . -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.deb' -o -name '*.rpm' \) -print0 |
+            while IFS= read -r -d '' file; do cp "$file" "$GITHUB_WORKSPACE/dist/$(basename "$file" | tr '~' '.')"; done
           # Squirrel names it "Eyrie-<version> Setup.exe"; the .nupkg and RELEASES beside it are only for auto-update.
           find . -type f -name '*Setup.exe' -exec cp {} "$GITHUB_WORKSPACE/dist/Eyrie-$version-${{ matrix.arch }}-Setup.exe" \;
           ls -l "$GITHUB_WORKSPACE/dist"
