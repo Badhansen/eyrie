@@ -31,11 +31,12 @@ From the repository root:
 pnpm desktop                                                    # start on the Projects page
 pnpm --filter @eyrie/desktop start -- ../../fixtures/bookstore-app  # open one directly
 pnpm --filter @eyrie/desktop package                            # out/Eyrie-<platform>-<arch>/
-pnpm --filter @eyrie/desktop make                               # installers: zip (macOS), Squirrel (Windows), deb (Linux)
+pnpm --filter @eyrie/desktop make                               # installers for this machine: DMG and ZIP (macOS), Squirrel (Windows), deb and rpm (Linux)
+pnpm --filter @eyrie/desktop smoke "$PWD/apps/desktop/out/Eyrie-darwin-arm64/Eyrie.app/Contents/MacOS/eyrie"  # check a packaged build
 pnpm --filter @eyrie/desktop icons                              # re-render assets/icon.{icns,ico,png} after editing the SVGs
 ```
 
-Each of these but `icons` first runs `pnpm resources`, which builds the web UI and copies it, with tree-sitter's WASM files and the icon, into `resources/`. The first run downloads the Electron binary.
+`smoke` opens `fixtures/bookstore-app` in the build you give it, with an empty cache and its own user-data folder, and checks that what the app records matches the engine run from source; the release workflow runs it on every target. Each command but `icons` and `smoke` first runs `pnpm resources`, which builds the web UI and copies it, with tree-sitter's WASM files and the icon, into `resources/`. The first run downloads the Electron binary.
 
 ## How it is built
 
@@ -45,6 +46,8 @@ Each of these but `icons` first runs `pnpm resources`, which builds the web UI a
 | `vite.main.config.mts` | Main process → `.vite/build/main.cjs` (the plugin's defaults) |
 | `vite.host.config.mts` | Engine host → `.vite/build/engine-host.mjs`, an ES module: `@eyrie/storage` loads `node:sqlite` with a top-level await |
 | `src/preload.ts` | The window's sandboxed preload → `.vite/build/preload.cjs` (Forge's preload target, with `vite.main.config.mts`) |
+| `src/prefs.ts` | The UI's saved choices (`PrefStore`): theme, 2D or 3D, and lens, as JSON in the user-data folder, read by the preload; tested in Node |
+| `scripts/smoke.ts` | `pnpm smoke <executable>`: the packaged-app check above |
 | `src/projects.ts` | The project list (`ProjectStore`): JSON in the user-data folder, written atomically; tested in Node |
 | `scripts/prepare-resources.ts` | Fills `resources/web`, `resources/grammars` and `resources/icon.png`, which ship as extra resources next to `app.asar` |
 | `assets/icon.svg`, `assets/icon-small.svg` | The app icon's source: the favicon's request trace on the macOS icon grid. The small one, with heavier strokes and no background graph, is drawn at 16 and 32 pt |
@@ -59,9 +62,9 @@ Everything the app runs is bundled by Vite, so every package is a dev dependency
 
 ## Not done yet
 
-- No code signing or notarization. A signed binary is gated by the AGPL-3.0 / `elkjs` licensing review in [docs/06 §5](../../docs/06-implementation-plan/README.md).
+- Not signed by Apple or Microsoft: the macOS app is signed ad hoc, so each system warns the first time it opens (the README's *Install* section says what to do). Publishing any build waits on the [launch review](../../docs/07-launch-readiness/README.md) (items 10 and 15).
 - Scans report no progress while they run, only elapsed time: the engine indexes in one pass and logs once at the end.
 - No auto-update, tray, background watching or notifications (see [feature-knowledge §12](../../docs/06-implementation-plan/feature-knowledge/README.md)).
 - "Open in editor" relies on the login shell's `PATH`, read once when the packaged app starts; set `EYRIE_EDITOR` if your editor is not found.
-- Tested on macOS (arm64): `package`, the packaged app on `fixtures/bookstore-app` with an empty cache, and `start`. Windows and Linux makers are configured but not yet run.
-- The MCP server runs only from a checkout (`pnpm eyrie mcp`): the packaged app ships no CLI, and its Electron fuses forbid running as Node.
+- Every target is built and smoke-tested by the release workflow on GitHub's runners (see the README's *Tested on* table). Squirrel's installer and the `.rpm` are built but have not been installed anywhere yet.
+- The MCP server runs only from a checkout (`pnpm eyrie mcp`): the packaged app ships no CLI, and its Electron fuses forbid running as Node. The plan is [06·M](../../docs/06-implementation-plan/feature-mcp-desktop/README.md).

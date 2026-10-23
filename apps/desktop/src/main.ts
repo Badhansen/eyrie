@@ -122,7 +122,8 @@ function ensureWindow(): BrowserWindow {
     title: 'Eyrie',
     // macOS and Windows take the icon from the app bundle and the executable; Linux takes it from the window.
     ...(process.platform === 'linux' ? { icon: join(resourcesDir(), 'icon.png') } : {}),
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: join(__dirname, 'preload.cjs') },
+    // No spellcheck: on Linux, Chromium would download its dictionaries from Google the first time a text field is used.
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, preload: join(__dirname, 'preload.cjs') },
   });
   // The UI only ever talks to its own engine; everything else opens in the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {

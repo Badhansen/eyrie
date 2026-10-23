@@ -21,8 +21,8 @@
 | **4. Graph intelligence** | Trace (downstream) and impact (upstream) on the architecture graph, shared by the UI and the MCP server (`@eyrie/lens`); shortest path between two components (MCP `find_path`) · **remaining:** path finding in the UI, code-level impact | "What breaks if I change this" is answerable at both architecture and symbol level | 🟡 Partial |
 | **5. AI understanding** | Optional graph-backed explanations over deterministic findings, designed as the [Architecture Knowledge Loop](feature-knowledge/README.md) · **done:** a review prototype (`pnpm arch`); `@eyrie/knowledge` with a durable `knowledge.db` of recorded commits; optional AI notes per commit through the Claude Code or Codex CLI (Codex sandboxed, macOS only), validated against the commit's own files and components · **remaining:** rules, findings and their explanations | AI answers cite graph nodes and never introduce an edge; works with AI entirely disabled | 🟡 Partial |
 | **6. Git intelligence** | Working-tree overlays, branch and commit architecture diffs, timeline; `snapshots` schema filled in | "What changed architecturally on this branch" renders as a diff of the map | ⬜ Planned |
-| **7. Coding-agent integration** | Attribute changes to agent sessions (e.g. Claude Code hooks); expose the graph to agents over MCP · **done:** `eyrie mcp` (nine read-only tools over the live graph); commits attributed to agents from `Co-Authored-By` · **remaining:** session-level attribution through hooks, an MCP `check` tool and hooks that return new violations to the agent, MCP from the packaged desktop app | A change can be traced to the agent session that made it; an agent can query the graph | 🟡 Partial |
-| **D. Desktop app** | Electron shell (Electron Forge) around the same UI, engine in a utility process · **done:** [`apps/desktop`](../../apps/desktop/README.md) packages and runs on macOS, unsigned · **remaining:** signing, installers tested on every platform, tray and background watching | Installable app, no pnpm or Node setup required of the user | 🟡 Partial |
+| **7. Coding-agent integration** | Attribute changes to agent sessions (e.g. Claude Code hooks); expose the graph to agents over MCP · **done:** `eyrie mcp` (nine read-only tools over the live graph); commits attributed to agents from `Co-Authored-By` · **remaining:** session-level attribution through hooks, an MCP `check` tool and hooks that return new violations to the agent, MCP from the packaged desktop app ([06·M](feature-mcp-desktop/README.md), proposed) | A change can be traced to the agent session that made it; an agent can query the graph | 🟡 Partial |
+| **D. Desktop app** | Electron shell (Electron Forge) around the same UI, engine in a utility process · **done:** [`apps/desktop`](../../apps/desktop/README.md); installers for macOS (DMG, ZIP), Windows (Squirrel) and Linux (deb, rpm), built on five native runners by `.github/workflows/release.yml`, each smoke-tested against the engine, and attached to a draft release; not signed or notarized · **remaining:** signing and notarization, automatic updates, MCP alongside the app ([06·M](feature-mcp-desktop/README.md)), tray and background watching | Installable app, no pnpm or Node setup required of the user | 🟡 Partial |
 
 Phases 3 and 4 can proceed in parallel — they touch different layers (UI reduction vs. graph queries). Phase 5 must not start before 4, because AI is only allowed to annotate a graph that already answers structural questions on its own.
 
@@ -73,7 +73,7 @@ Validation is continuous, not a phase. Three layers, each answering a different 
 
 ## 5. Release preparation
 
-Eyrie installs from source today (`pnpm install` → `pnpm start`), so "release" means a tagged, documented state of the repository.
+A release is a tag `v<version>` matching `apps/desktop/package.json`. It builds the desktop installers on five native runners, smoke-tests each, and attaches them with `SHA256SUMS` and build provenance to a **draft** GitHub release, which a person reviews and publishes; the tag's source archive is the source of exactly those builds. The CLI still installs from source (`pnpm install` → `pnpm start`). Before tagging:
 
 - [ ] `pnpm test`, `pnpm smoke` and `pnpm typecheck` green.
 - [ ] `README.md` roadmap, "What is detected" table and **Known limitations** match reality — limitations are a feature of the product's honesty, not a backlog to hide.
@@ -82,15 +82,17 @@ Eyrie installs from source today (`pnpm install` → `pnpm start`), so "release"
 - [ ] Privacy claims re-verified by inspection: no outbound requests, fonts bundled, `127.0.0.1` bind, token required, non-local `Host` rejected, `/api/source` index-only.
 - [ ] AGPL-3.0 obligations understood for any derivative or hosted variant; `LICENSE` present.
 - [ ] Fresh-clone install tested on a clean machine with Node 22.13 and pnpm 9.
+- [ ] Each installer from the draft release installed and opened on a clean machine of its system, at least once per release line (CI runs the packaged app, but not Squirrel's installer, and only on runners).
+- [ ] README *Tested on* table matches what was actually run for this release.
 - [ ] First-run experience checked on a large repository (single-threaded parse is slow once, fast after).
 
-**Before any public launch** — a landing page, a hosted demo, or distributing a signed desktop build — clear the open actions in the [Launch Readiness review](../07-launch-readiness/README.md). That review is the 20-point pre-launch checklist completed against Eyrie; its current decision is **Hold**, with eight open actions. The ones that gate a launch: publish an operator identity and contact, add `SECURITY.md`, state explicitly that no data is collected, fix the two failing contrast tokens, run one screen-reader pass, and add `THIRD-PARTY-NOTICES.md` (the bundled OFL fonts ship without their licence today). One item — whether AGPL-3.0-only combines soundly with `elkjs` under its GPL-3.0-or-later option — needs specialist review before any binary is distributed, so it gates Phase D rather than a source release.
+**Before any public launch** — a landing page, a hosted demo, or distributing a signed desktop build — clear the open actions in the [Launch Readiness review](../07-launch-readiness/README.md). That review is the 20-point pre-launch checklist completed against Eyrie, re-reviewed on 2026-10-23 for the desktop release and the AI notes; its decision is **Hold** until two actions close: one screen-reader pass (item 10), and confirmation of the `elkjs` licence election (item 15). Until then, releases can be built as drafts and tested on clean machines, but not published, pre-releases included.
 
 ## 6. Rollback
 
-- **Users:** the previous tag still works; nothing is hosted, so there is nothing to roll back centrally.
+- **Users:** the previous release's installers still work, and the previous tag still builds from source. Nothing is hosted, so there is nothing to roll back centrally.
 - **Cache incompatibility:** `--reset`, or delete `~/.eyrie/repos/<hash>/`. This is the recovery path for every storage-shaped bug.
-- **Bad release:** revert the tag. There is no migration to unwind, because the database is disposable by design.
+- **Bad release:** turn the GitHub release back into a draft (or mark it a pre-release) and say so in the next release's notes; users reinstall the previous version (on Windows, uninstall first). There is no migration to unwind, because the database is disposable by design. Never re-use a version number: build a new one.
 
 ## 7. Risks
 

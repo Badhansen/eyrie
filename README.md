@@ -1,17 +1,81 @@
 # Eyrie
 
-[![CI](https://github.com/Badhansen/eyrie/actions/workflows/ci.yml/badge.svg)](https://github.com/Badhansen/eyrie/actions/workflows/ci.yml)
+[![CI](https://github.com/eyrie-hq/eyrie/actions/workflows/ci.yml/badge.svg)](https://github.com/eyrie-hq/eyrie/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](LICENSE)
 
 **A live architecture map of your codebase that updates as you (or your coding agent) change the code.**
 
 Eyrie parses a repository locally, builds a code knowledge graph, derives a small architecture graph from it (pages → API routes → services → data → external services), and shows it as an interactive map. When a file is saved, only the affected part of the graph is recomputed and the change animates into the map: new components appear, edited ones pulse, and every save is recorded on a change tape at the bottom of the screen.
 
-> Status: early. Phase 1 (static architecture map) and Phase 2 (live graph) work end to end for TypeScript/JavaScript, Python, Go, Java, C#, PHP, Ruby and Rust projects. JavaScript (Next.js, Node.js) has the deepest support. See [Roadmap](#roadmap).
+> Status: early. Phase 1 (static architecture map) and Phase 2 (live graph) work end to end for TypeScript/JavaScript, Python, Go, Java, C#, PHP, Ruby and Rust projects. JavaScript (Next.js, Node.js) has the deepest support. The desktop app runs on macOS, Windows and Linux; its builds are not yet signed by Apple or Microsoft. See [Roadmap](#roadmap).
 
 An *eyrie* is a bird of prey's nest, built high on a crag — the vantage point you watch the whole territory from.
 
-## Quick start
+## Install
+
+### Desktop app
+
+Download the file for your system from [Releases](https://github.com/eyrie-hq/eyrie/releases):
+
+| System | File |
+| --- | --- |
+| macOS, Apple silicon | `Eyrie-<version>-arm64.dmg` |
+| macOS, Intel | `Eyrie-<version>-x64.dmg` |
+| Windows, x64 | `Eyrie-<version>-x64-Setup.exe` |
+| Debian, Ubuntu | `eyrie-desktop_<version>_amd64.deb`, or `_arm64.deb` |
+| Fedora, openSUSE | `eyrie-desktop-<version>-1.x86_64.rpm`, or `.arm64.rpm` |
+
+Each Mac build also comes as a ZIP of the same app.
+
+**The first time you open it.** The builds are not signed by Apple or Microsoft yet, so each system warns you once:
+
+- **macOS:** drag Eyrie to Applications and open it. When macOS says it cannot verify the app, open **System Settings → Privacy & Security**, choose **Open Anyway** next to Eyrie, and confirm.
+- **Windows:** when SmartScreen says "Windows protected your PC", choose **More info → Run anyway**. The installer needs no administrator rights: it installs Eyrie for your user, adds it to the Start menu and opens it.
+- **Linux:** install the package with your package manager, then open Eyrie from your applications menu or run `eyrie-desktop`.
+
+```bash
+sudo apt install ./eyrie-desktop_<version>_amd64.deb
+```
+
+```bash
+sudo dnf install ./eyrie-desktop-<version>-1.x86_64.rpm
+```
+
+Eyrie opens on a list of projects: add a repository folder (or drop one on the window) and open it to see its map.
+
+**Checking a download.** Every release lists the SHA-256 of each file in `SHA256SUMS`, and GitHub records which build of this repository produced it. Put the download next to `SHA256SUMS` and check one or both:
+
+```bash
+shasum -a 256 -c SHA256SUMS --ignore-missing
+```
+
+```bash
+gh attestation verify Eyrie-<version>-arm64.dmg --repo eyrie-hq/eyrie
+```
+
+**Updating.** There is no automatic update yet. Download the new version and install it over the old one; your projects and settings stay.
+
+**Uninstalling, and where Eyrie keeps its data.** Uninstalling removes the app but leaves its data; delete the two folders as well to remove everything.
+
+| System | Uninstall | Project list and settings | Index cache, shared with the CLI |
+| --- | --- | --- | --- |
+| macOS | Drag Eyrie from Applications to the Bin | `~/Library/Application Support/Eyrie` | `~/.eyrie` |
+| Windows | Settings → Apps → Installed apps → Eyrie → Uninstall | `%APPDATA%\Eyrie` | `%USERPROFILE%\.eyrie` |
+| Linux | `sudo apt remove eyrie-desktop` or `sudo dnf remove eyrie-desktop` | `~/.config/Eyrie` | `~/.eyrie` |
+
+### Tested on
+
+Every release build is checked on GitHub's runners before it is attached to a release: the packaged app opens `fixtures/bookstore-app` with an empty cache, and what it indexes must match the engine run from source on the same machine. Nobody has yet installed a release on a clean desktop computer; reports are welcome.
+
+| Build | Checked on | What was checked |
+| --- | --- | --- |
+| macOS, Apple silicon | macOS 15.7 (runner); macOS 26.6 (by hand) | The app indexes the fixture; its ad hoc signature verifies. By hand also: the DMG and ZIP contents, and saved choices surviving a reopen and a relaunch |
+| macOS, Intel | macOS 15.7 (runner) | The app indexes the fixture; its signature verifies |
+| Windows, x64 | Windows Server 2025 (runner) | The packaged app indexes the fixture. The installer itself has not been run yet |
+| Linux, x64 | Ubuntu 24.04 (runner) | The `.deb` installs with `apt` and the installed app indexes the fixture. The `.rpm` is built and inspected, not installed |
+| Linux, arm64 | Ubuntu 24.04 (runner) | The same |
+
+### From source
 
 Requirements: Node.js 22.13 or newer, pnpm 9.
 
@@ -29,7 +93,9 @@ Options: `--port <n>`, `--no-open`, `--no-watch` (index once), `--reset` (ignore
 
 ## Use it from a coding agent (MCP)
 
-`eyrie mcp` serves a repository's live architecture to coding agents over the [Model Context Protocol](https://modelcontextprotocol.io), on stdio. Any MCP client can run it; replace `/path/to/eyrie` with this checkout and `/path/to/your/repo` with the project. `pnpm --silent` keeps pnpm's own output off the protocol stream.
+`eyrie mcp` serves a repository's live architecture to coding agents over the [Model Context Protocol](https://modelcontextprotocol.io), on stdio.
+
+**It runs from a source checkout, not from the desktop app, for now.** An agent starts an MCP server as a command, and the desktop app is not one: its Electron fuses stop it running as Node, which is what `eyrie mcp` needs. The plan is a separate `eyrie` command installed alongside the app; see [MCP in the desktop app](docs/06-implementation-plan/feature-mcp-desktop/README.md). Until then, clone this repository, run `pnpm install`, and point your agent at it as below, replacing `/path/to/eyrie` with the checkout and `/path/to/your/repo` with the project. `pnpm --silent` keeps pnpm's own output off the protocol stream. The app and `eyrie mcp` share the index cache, and both can have the same project open; one of them may then skip the cache for that run, which only makes it slower.
 
 **Claude Code** and **Codex** have the same one-line setup:
 
@@ -88,7 +154,7 @@ A name that matches several components is refused with the candidates rather tha
 
 Whenever Eyrie opens or scans a project, it records the commits it has not seen yet in the project's `knowledge.db`: the message, the author and any coding agent in a `Co-Authored-By` trailer, the files changed with line counts, and the architecture components those files belong to. While a project is open it checks for new commits every 5 seconds.
 
-Optionally, Eyrie has each commit **noted** by your Claude Code or Codex CLI: what the commit is for, whether what it changed matches its message, and its architectural risk. A commit titled "fix: typo in checkout" that also edits the data model is flagged. Turn it on per project in the desktop app (**Analyse Commits with Claude** or **with Codex** in the project's ⋯ menu), or with `--ai claude` / `--ai codex` (or `EYRIE_AI`) on the command line. It is off by default. Codex is available on macOS only for now, because Eyrie runs it inside a macOS sandbox (see [Privacy and security](#privacy-and-security)).
+Optionally, Eyrie has each commit **noted** by your Claude Code or Codex CLI: what the commit is for, whether what it changed matches its message, and its architectural risk. A commit titled "fix: typo in checkout" that also edits the data model is flagged. Turn it on per project in the desktop app (**Analyse Commits with Claude** or **with Codex** in the project's ⋯ menu), or with `--ai claude` / `--ai codex` (or `EYRIE_AI`) on the command line. It is off by default. Codex is available on macOS only for now, because Eyrie runs it inside a macOS sandbox (see [Privacy and security](#privacy-and-security)). On Windows, Claude Code must be the `claude.exe` from Anthropic's native installer: Eyrie's instructions span several lines, and the npm package's `claude.cmd` cannot be given those.
 
 Notes are opinions, kept beside the facts and labelled with the model that wrote them. Every observation must cite a file or component the commit actually touched, or the note is rejected. A note never becomes a dependency, a finding or a rule.
 
@@ -112,7 +178,7 @@ Generated code is skipped (`*.pb.go`, `*_pb2.py`, `*.Designer.cs`, `*.d.ts`), an
 ## What you see
 
 - **Four lenses**, from the whole system down to one request: `1` System, `2` Architecture, `3` Data flow, `4` Sequence. Eyrie opens on System the first time and remembers your choice after that. *System* is the whiteboard view: components are grouped into one box per app or package (folders under `apps/`, `packages/`, `services/` or `libs/`) and per layer (UI, API, services, data), with each external service and any missing route kept as its own box, and links between boxes labelled with what they carry and how many component links they stand for. Select a box to see what it holds; click a component there to open it in the Architecture lens. *Architecture* is the map of every component the system is made of. *Data flow* keeps only the components that touch data — stores, and anything that reads, writes or ships it — and colours every link by what it carries: orange writes, cyan reads, dashed for a call that leaves the process, faint for an in-process hand-off. Reads are drawn pointing **out of the store**, so the arrows follow the data rather than the dependency. *Sequence* picks one entry point and lays its calls out as a sequence diagram: lifelines across the top, messages down the page, each with the file and line that makes the call (click it to open your editor). All four are derived from the same static analysis; see [Known limitations](#known-limitations) for what sequence order can and cannot tell you.
-- **2D and 3D views** (press `V`). Both use custom React Flow components for navigation and inspection. The 3D view adds a full-canvas Three.js city: components become lit blocks whose **height shows lines of code**, dependencies run along the ground, and upright labels remain readable as the camera rotates. Drag to pan, right-drag or `⌥`-drag to orbit, scroll or pinch to zoom, `Q`/`E` to rotate, `T` for a top-down plan, `R` to reset. The minimap navigates the projected city. If WebGL is unavailable, the view offers a switch back to 2D.
+- **2D and 3D views** (press `V`). Eyrie opens in 2D until you choose 3D, and remembers the choice, in the desktop app too. Both use custom React Flow components for navigation and inspection. The 3D view adds a full-canvas Three.js city: components become lit blocks whose **height shows lines of code**, dependencies run along the ground, and upright labels remain readable as the camera rotates. Drag to pan, right-drag or `⌥`-drag to orbit, scroll or pinch to zoom, `Q`/`E` to rotate, `T` for a top-down plan, `R` to reset. The minimap navigates the projected city. If WebGL is unavailable, the view offers a switch back to 2D.
 - **Lanes.** Components are arranged left to right in the order a request travels: UI → Edge (middleware) → API → Logic → Data → External. A ruler at the top names the lanes and points to lanes that are off-screen.
 - **Colors carry meaning.** Blue frontend, green API, orange services, purple AI, cyan data, yellow external services, grey utilities. A missing API route (frontend calls `/api/x` and nothing serves it) is drawn in red.
 - **Links.** Solid lines are calls, dashed lines are HTTP requests (they cross a network boundary), cyan lines read or write data.
@@ -164,7 +230,8 @@ git log ── new commits ──► knowledge.db ◄── components each comm
 
 **Eyrie has no accounts, no telemetry and no server of its own.** It stores two files per repository under `~/.eyrie/repos/<hash>/`: an analysis cache (`graph.db`: file paths, symbol names and the graph built from them) and `knowledge.db`, the commits it has recorded (messages, authors' and co-authors' names and email addresses as git has them, changed paths) and any AI notes on them. Delete either at any time.
 
-- **With AI notes off, the default, nothing leaves your machine.** Eyrie makes no network requests; fonts are bundled.
+- **With AI notes off, the default, nothing leaves your machine.** Eyrie makes no network requests; fonts are bundled. The desktop app's window loads only Eyrie's own pages, served by its local engine; links open in your browser, and spellcheck is off, so Chromium downloads no dictionaries.
+- **The Windows installer** downloads Eyrie's icon from this repository on GitHub once, while installing, to show in Installed apps. That is the installer (Squirrel) doing it, not Eyrie.
 - **With AI notes on** for a project, Eyrie runs your Claude Code or Codex CLI on recorded commits. It sends commit messages, author names, changed file paths with line counts and the names of the architecture components involved, and never source code. The CLI sends them to Anthropic or OpenAI under your own account.
   - **Claude Code** runs with no tools, no MCP servers and none of your settings, in an empty temporary folder, so the model can read nothing else and change nothing.
   - **Codex** keeps a command tool that cannot be turned off, and its own read-only sandbox still lets commands read any of your files. So Eyrie runs Codex itself inside a macOS sandbox: it can write nowhere except one empty workspace (holding a copy of Codex's login) and `/dev`, and it cannot read file contents or list folders in your home folder, your temporary folder or on external drives. Codex's command sandbox cannot start inside it, so no command runs at all, and Codex also runs read-only, without your config, rules, saved session, web search, connectors, plugins or its code-mode tools. Tested with Codex's own protections deliberately switched off: its patch tool and shell could write only inside the workspace, and reading `~/.ssh` was refused. System files outside your home folder, such as `/etc/hosts`, stay readable, and no command can run to read them.
@@ -172,7 +239,7 @@ git log ── new commits ──► knowledge.db ◄── components each comm
 - The source endpoint only serves files that are in the index. `.env` files, keys and anything ignored by git are never readable through it.
 - The MCP server has no network listener: it talks only to the agent that started it, over stdio, and every tool is read-only.
 - `git` runs without a shell and with the settings a repository could use to run its own programs turned off.
-- The data lives in `~/.eyrie/repos/<hash>/` (override with `EYRIE_HOME`). Delete that directory, or run with `--reset`, to start fresh.
+- The data lives in `~/.eyrie/repos/<hash>/` (override with `EYRIE_HOME`). Delete that directory, or run with `--reset`, to start fresh. The desktop app also keeps its project list (`projects.json`) and your theme, view and lens (`prefs.json`) in its own folder, listed under [Install](#install).
 
 Found a security problem? Please report it privately. See [SECURITY.md](SECURITY.md).
 
@@ -205,6 +272,7 @@ pnpm test          # parser, graph, architecture, lens, engine (real file watche
 pnpm typecheck
 pnpm dev           # engine on :4319 (fixture app, token "dev") + UI with hot reload on :5173
 pnpm desktop       # the desktop app (Electron); see apps/desktop/README.md
+pnpm --filter @eyrie/desktop make    # installers for this machine, in apps/desktop/out/make
 pnpm eyrie mcp fixtures/bookstore-app   # the MCP server on stdio, for trying it with a client
 
 pnpm smoke:fetch   # clone a real MIT-licensed Next.js app into .smoke/ (once)
@@ -224,6 +292,8 @@ The other languages are tested the same way, with small in-memory apps per langu
 
 During `pnpm dev`, open `http://localhost:5173/?token=dev`.
 
+**Releases.** Pushing a tag `v<version>` that matches `apps/desktop/package.json` runs [`release.yml`](.github/workflows/release.yml): it builds the desktop app on macOS (Apple silicon and Intel), Windows and Linux (x64 and arm64), each on its own kind of runner, checks each build with `pnpm --filter @eyrie/desktop smoke`, and attaches the installers, `SHA256SUMS` and build provenance to a draft release. A person reviews the draft and publishes it. Pull requests that change the desktop app run the same builds and keep the installers as workflow artifacts for a week.
+
 To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed` on your `PATH`; set `EYRIE_EDITOR` to choose one.
 
 ## Roadmap
@@ -235,7 +305,7 @@ To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed`
 - [ ] **Phase 5: AI understanding.** Done: commit history in `knowledge.db` and optional AI notes on each commit through the Claude Code or Codex CLI. Next: architecture rules and findings with AI explanations ([Knowledge Loop](docs/06-implementation-plan/feature-knowledge/README.md)), more backends.
 - [ ] **Phase 6: Git intelligence.** Working-tree overlays, branch and commit architecture diffs, timeline.
 - [ ] **Phase 7: coding-agent integration.** Done: the MCP server (`eyrie mcp`) and agent attribution from `Co-Authored-By` trailers. Next: an MCP `check` tool and Claude Code hooks that hand new architecture violations back to the agent, and the MCP server in the packaged desktop app.
-- [ ] **Desktop app.** An Electron shell (Electron Forge) around the same UI, running the engine in a utility process. A first, unsigned version packages and runs on macOS from [`apps/desktop`](apps/desktop/README.md); signing, installers for every platform and background watching are next.
+- [ ] **Desktop app.** Done: an Electron shell (Electron Forge, [`apps/desktop`](apps/desktop/README.md)) around the same UI, running the engine in a utility process, with installers for macOS (DMG, ZIP), Windows (Squirrel) and Linux (deb, rpm) built and checked on each platform by the release workflow. Next: signing and notarization, automatic updates, the MCP server alongside the app ([plan](docs/06-implementation-plan/feature-mcp-desktop/README.md)), and background watching.
 
 ## Known limitations
 
@@ -247,6 +317,8 @@ To open files from the UI, Eyrie looks for `cursor`, `code`, `windsurf` or `zed`
 - Supported languages: TypeScript, JavaScript, Python, Go, Java, C#, PHP, Ruby and Rust. Kotlin, Swift and C/C++ are not parsed yet.
 - Outside JavaScript, what a dynamic language decides at run time is not followed: Ruby metaprogramming, PHP magic methods, Python `getattr`, DI containers configured outside the code, and Rust macro bodies (such as `sqlx::query!`).
 - A frontend that calls the backend through a generated API client (OpenAPI SDKs) shows no HTTP links to the backend's routes; only direct `fetch` / `axios` calls are matched.
+- The desktop builds are not signed by Apple or Microsoft, so each system warns the first time Eyrie opens, and there are no automatic updates yet. The app does not include the MCP server yet; run it from a source checkout.
+- On Linux, a very large repository can use up the system's file-watch limit (`fs.inotify.max_user_watches`); Eyrie logs the error, and changes to some files stop reaching the map until the limit is raised.
 
 ## Related projects
 
@@ -256,7 +328,7 @@ This space moves fast. [GitNexus](https://github.com/abhigyanpatwari/GitNexus), 
 
 Eyrie is maintained by Badhan Sen ([@Badhansen](https://github.com/Badhansen)).
 
-- **Questions, bugs and feature requests:** [GitHub issues](https://github.com/Badhansen/eyrie/issues).
+- **Questions, bugs and feature requests:** [GitHub issues](https://github.com/eyrie-hq/eyrie/issues).
 - **Security problems:** report privately, as described in [SECURITY.md](SECURITY.md).
 - **Contributing:** start with [CONTRIBUTING.md](CONTRIBUTING.md). Everyone taking part agrees to the [Code of Conduct](CODE_OF_CONDUCT.md).
 

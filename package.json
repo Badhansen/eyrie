@@ -4,13 +4,13 @@
   "description": "Local-first live architecture graph for codebases",
   "license": "AGPL-3.0-only",
   "author": "Badhan Sen",
-  "homepage": "https://github.com/Badhansen/eyrie#readme",
+  "homepage": "https://github.com/eyrie-hq/eyrie#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Badhansen/eyrie.git"
+    "url": "git+https://github.com/eyrie-hq/eyrie.git"
   },
   "bugs": {
-    "url": "https://github.com/Badhansen/eyrie/issues"
+    "url": "https://github.com/eyrie-hq/eyrie/issues"
   },
   "type": "module",
   "engines": {
