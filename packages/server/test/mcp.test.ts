@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -217,7 +218,9 @@ describe('eyrie mcp over stdio', () => {
   it('serves JSON-RPC on stdout and logs only to stderr', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'eyrie-mcp-stdio-'));
     const root = fixtureRepo(dir);
-    const child = spawn(join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [join(REPO_ROOT, 'packages/server/src/cli.ts'), 'mcp', root, '--no-watch'], {
+    // tsx's own CLI under this Node: node_modules/.bin/tsx is a shell script (tsx.cmd on Windows), which spawn cannot start there.
+    const tsx = createRequire(import.meta.url).resolve('tsx/cli');
+    const child = spawn(process.execPath, [tsx, join(REPO_ROOT, 'packages/server/src/cli.ts'), 'mcp', root, '--no-watch'], {
       env: { ...process.env, EYRIE_HOME: join(dir, 'home'), EYRIE_AI: '' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
