@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 /**
  * Runs in every page of the window, sandboxed. Each page gets `showProjects`,
- * so the engine's UI can offer a way back; only the Projects page
+ * so the engine's UI can offer a way back, and `prefs`; only the Projects page
  * (eyrie://app/) also gets the project list. The main process checks the
  * sender of every project call again, so this split is not the only guard.
  */
@@ -29,8 +29,21 @@ const projects = {
   },
 };
 
+// The UI's saved choices, read before the page's scripts run, so a map opens in the view it was left in.
+// The main process keeps them (src/prefs.ts): each map is served on a new port, so its localStorage starts empty.
+const saved: Record<string, string> = ipcRenderer.sendSync(Channel.prefs) ?? {};
+const prefs = {
+  get: (key: string): string | null => saved[key] ?? null,
+  set: (key: string, value: string | null): void => {
+    if (value === null) delete saved[key];
+    else saved[key] = value;
+    ipcRenderer.send(Channel.setPref, key, value);
+  },
+};
+
 contextBridge.exposeInMainWorld('eyrieDesktop', {
   platform: process.platform,
   showProjects: () => ipcRenderer.send(Channel.show),
+  prefs,
   ...(location.protocol === 'eyrie:' ? { projects } : {}),
 });

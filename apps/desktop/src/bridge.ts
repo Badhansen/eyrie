@@ -1,6 +1,7 @@
 /**
- * The contract between the main process and the Projects page (served as
- * eyrie://app/projects.html), carried over IPC by src/preload.ts.
+ * The contract between the main process and the window's pages: the Projects
+ * page (served as eyrie://app/projects.html) and a project's map, carried over
+ * IPC by src/preload.ts.
  * apps/web/src/lib/desktop.ts mirrors these types for the page; keep the two in step.
  */
 import type { Project } from './projects.js';
@@ -41,4 +42,8 @@ export const Channel = {
   changed: 'projects:changed',
   /** Any page → main: show the Projects page. */
   show: 'projects:show',
+  /** Any page → main, synchronous: the saved UI choices (src/prefs.ts). */
+  prefs: 'prefs:all',
+  /** Any page → main: save a UI choice, or forget it with null. */
+  setPref: 'prefs:set',
 } as const;
