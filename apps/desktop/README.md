@@ -55,7 +55,7 @@ Everything the app runs is bundled by Vite, so every package is a dev dependency
 - **`node:sqlite`.** Electron 44 runs Node 24, which has `node:sqlite` without a flag. Nothing else in the engine is native: tree-sitter is WASM.
 - **Grammar files.** A bundle has no `node_modules` to resolve WASM grammars from, so the main process sets `EYRIE_GRAMMAR_DIR` to `resources/grammars` for the engine host. `@eyrie/parser` reads it on first use; `grammarFiles()` lists what to copy.
 
-**pnpm.** Electron Forge refuses pnpm's default layout. The root `.npmrc` sets `public-hoist-pattern[]=*electron*`, which satisfies that check while every other package keeps pnpm's strict layout. Forge's documentation suggests `node-linker=hoisted`; it is not needed because packaging reads no `node_modules`.
+**pnpm.** Electron Forge refuses pnpm's default layout. The root `.npmrc` sets `public-hoist-pattern[]=*electron*`, which satisfies that check while every other package keeps pnpm's strict layout. Forge's documentation suggests `node-linker=hoisted`; it is not needed because packaging reads no `node_modules`. `electron-winstaller` is a direct dependency although only the Squirrel maker uses it: as the maker's optional dependency, pnpm on Windows skipped `lodash` along with the Linux-only installers that also need it, and the Windows build could not load.
 
 ## Not done yet
 

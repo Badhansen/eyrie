@@ -14,6 +14,8 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 // (/usr/bin/eyrie-desktop), so that plain `eyrie` stays free for the command-line tool.
 const linux = {
   name: 'eyrie-desktop',
+  // The executable the command points at. Left out, the makers look for one named after package.json (@eyrie/desktop).
+  bin: 'eyrie',
   productName: 'Eyrie',
   genericName: 'Architecture map',
   homepage: 'https://github.com/Badhansen/eyrie',
