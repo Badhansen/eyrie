@@ -6,7 +6,7 @@ Eyrie runs a local HTTP and WebSocket server that serves your source code to you
 
 **Do not open a public issue for a security problem.**
 
-- Preferred: open a [private vulnerability report](https://github.com/Badhansen/eyrie/security/advisories/new) on GitHub.
+- Preferred: open a [private vulnerability report](https://github.com/eyrie-hq/eyrie/security/advisories/new) on GitHub.
 - Or email the maintainer, Badhan Sen, at **badhan.cse@gmail.com** with `[eyrie security]` in the subject.
 
 Please include what you found, how to reproduce it (a minimal repository or request sequence is ideal), and the commit you tested against.

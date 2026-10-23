@@ -18,7 +18,7 @@ const linux = {
   bin: 'eyrie',
   productName: 'Eyrie',
   genericName: 'Architecture map',
-  homepage: 'https://github.com/Badhansen/eyrie',
+  homepage: 'https://github.com/eyrie-hq/eyrie',
   categories: ['Development' as const],
   icon: 'assets/icon.png',
 };
@@ -54,7 +54,7 @@ const config: ForgeConfig = {
     new MakerZIP({}, ['darwin']),
     // `name` defaults to package.json's, and a scoped name (@eyrie/desktop) is not a valid NuGet id.
     // Squirrel shows iconUrl in Installed apps, and fetches it there and then.
-    new MakerSquirrel({ name: 'eyrie', setupIcon: 'assets/icon.ico', iconUrl: 'https://raw.githubusercontent.com/Badhansen/eyrie/main/apps/desktop/assets/icon.ico' }),
+    new MakerSquirrel({ name: 'eyrie', setupIcon: 'assets/icon.ico', iconUrl: 'https://raw.githubusercontent.com/eyrie-hq/eyrie/main/apps/desktop/assets/icon.ico' }),
     new MakerDeb({ options: { ...linux, section: 'devel', maintainer: 'Badhan Sen <37157382+Badhansen@users.noreply.github.com>' } }),
     new MakerRpm({ options: { ...linux, license: 'AGPL-3.0-only' } }),
   ],

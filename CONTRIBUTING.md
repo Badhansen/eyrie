@@ -4,7 +4,7 @@ Thanks for your interest. Eyrie is early and moves quickly, so a short conversat
 
 ## Before you start
 
-- **Bugs:** [open an issue](https://github.com/Badhansen/eyrie/issues/new/choose) with the repository shape that triggers it (a minimal reproduction is ideal) and what the map showed versus what you expected.
+- **Bugs:** [open an issue](https://github.com/eyrie-hq/eyrie/issues/new/choose) with the repository shape that triggers it (a minimal reproduction is ideal) and what the map showed versus what you expected.
 - **Features, new languages or frameworks:** open an issue first to agree on scope.
 - **Small fixes** (typos, docs, an obviously wrong edge): send a pull request directly.
 - **Security problems:** do not open an issue. Follow [SECURITY.md](SECURITY.md).
