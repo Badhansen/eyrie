@@ -1,0 +1,8 @@
+# Text files are checked out with LF on every OS, so the fixtures and the tests read the
+# same bytes on Windows as on macOS and Linux (Git for Windows would otherwise write CRLF).
+* text=auto eol=lf
+
+*.icns binary
+*.ico binary
+*.png binary
+*.wasm binary
