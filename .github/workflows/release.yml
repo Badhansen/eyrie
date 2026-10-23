@@ -1,0 +1,173 @@
+name: Release
+
+# A v* tag builds the desktop app on each platform it ships for, each on its own kind of
+# runner, checks that each build indexes the fixture as the engine does, and attaches the
+# installers, SHA256SUMS and build provenance to a draft GitHub release. Nothing is
+# published: a person reviews the draft and publishes it.
+#
+# Pull requests that touch the desktop app run the same builds and checks without making a
+# release, and keep the installers as workflow artifacts for a week, to try on a clean machine.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/release.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-15, arch: arm64 }
+          - { name: macos-x64, os: macos-15-intel, arch: x64 }
+          - { name: windows-x64, os: windows-latest, arch: x64 }
+          - { name: linux-x64, os: ubuntu-24.04, arch: x64 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Check the tag matches the app's version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match apps/desktop/package.json, which says $version"
+            exit 1
+          fi
+
+      - name: Install rpmbuild and a virtual display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm xvfb
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the installers
+        run: pnpm --filter @eyrie/desktop make
+
+      # The fuses stop the app being run as plain Node; the build must still have them set.
+      - name: Check the Electron fuses
+        run: |
+          case "$RUNNER_OS" in
+            macOS) app="apps/desktop/out/Eyrie-darwin-${{ matrix.arch }}/Eyrie.app" ;;
+            Windows) app="apps/desktop/out/Eyrie-win32-${{ matrix.arch }}/eyrie.exe" ;;
+            Linux) app="apps/desktop/out/Eyrie-linux-${{ matrix.arch }}/eyrie" ;;
+          esac
+          fuses=$(pnpm --filter @eyrie/desktop exec electron-fuses read --app "$GITHUB_WORKSPACE/$app")
+          echo "$fuses"
+          grep -q 'RunAsNode is Disabled' <<< "$fuses"
+          grep -q 'OnlyLoadAppFromAsar is Enabled' <<< "$fuses"
+
+      - name: Check the ad hoc signature
+        if: runner.os == 'macOS'
+        run: codesign --verify --deep --strict --verbose=2 "apps/desktop/out/Eyrie-darwin-${{ matrix.arch }}/Eyrie.app"
+
+      - name: Smoke-test the app (macOS)
+        if: runner.os == 'macOS'
+        run: pnpm --filter @eyrie/desktop smoke "$GITHUB_WORKSPACE/apps/desktop/out/Eyrie-darwin-${{ matrix.arch }}/Eyrie.app/Contents/MacOS/eyrie"
+
+      - name: Smoke-test the app (Windows)
+        if: runner.os == 'Windows'
+        run: pnpm --filter @eyrie/desktop smoke "$GITHUB_WORKSPACE/apps/desktop/out/Eyrie-win32-${{ matrix.arch }}/eyrie.exe"
+
+      # On Linux the .deb itself is installed and run, which also checks its dependencies and
+      # the setuid sandbox helper it installs, on a distribution that restricts user namespaces.
+      - name: Install the .deb and smoke-test it (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          dpkg-deb --info apps/desktop/out/make/deb/${{ matrix.arch }}/*.deb
+          rpm -qpi apps/desktop/out/make/rpm/${{ matrix.arch }}/*.rpm
+          sudo apt-get install -y ./apps/desktop/out/make/deb/${{ matrix.arch }}/*.deb
+          xvfb-run -a pnpm --filter @eyrie/desktop smoke /usr/bin/eyrie-desktop
+
+      - name: Collect the installers
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          mkdir dist
+          cd apps/desktop/out/make
+          find . -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} "$GITHUB_WORKSPACE/dist/" \;
+          # Squirrel names it "Eyrie-<version> Setup.exe"; the .nupkg and RELEASES beside it are only for auto-update.
+          find . -type f -name '*Setup.exe' -exec cp {} "$GITHUB_WORKSPACE/dist/Eyrie-$version-${{ matrix.arch }}-Setup.exe" \;
+          ls -l "$GITHUB_WORKSPACE/dist"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eyrie-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: eyrie-*
+          path: dist
+          merge-multiple: true
+
+      - name: Write SHA256SUMS
+        run: |
+          (cd dist && sha256sum *) > SHA256SUMS
+          mv SHA256SUMS dist/
+          cat dist/SHA256SUMS
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dist/*'
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > notes.md <<EOF
+          Eyrie $version for macOS (Apple silicon and Intel), Windows (x64) and Linux (x64 and arm64).
+
+          **These builds are not signed by Apple or Microsoft.** The first time you open Eyrie:
+          - **macOS:** open it once, then choose **Open Anyway** in System Settings → Privacy & Security.
+          - **Windows:** when SmartScreen stops the installer, choose **More info** → **Run anyway**.
+
+          Check a download against \`SHA256SUMS\`, or check where it was built:
+
+          \`\`\`
+          gh attestation verify <file> --repo $GITHUB_REPOSITORY
+          \`\`\`
+
+          Built from $GITHUB_SHA by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. The source of exactly this build is the tag's source archive below.
+          EOF
+          prerelease=""
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then prerelease="--prerelease"; fi
+          # A re-run adds to the draft it made the first time rather than making another.
+          if gh release list --json tagName --jq '.[].tagName' | grep -qxF "$GITHUB_REF_NAME"; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --draft $prerelease --verify-tag --title "Eyrie $version" --notes-file notes.md
+          fi

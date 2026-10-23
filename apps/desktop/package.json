@@ -13,6 +13,7 @@
     "start": "pnpm resources && electron-forge start",
     "package": "pnpm resources && electron-forge package",
     "make": "pnpm resources && electron-forge make",
+    "smoke": "tsx scripts/smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "icons": "electron scripts/make-icons.mjs"
   },
